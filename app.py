@@ -1,7 +1,7 @@
 import os
 
 from flask import Flask, request, url_for, session, redirect, jsonify
-
+from pymongo import collection
 
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
@@ -19,31 +19,32 @@ try:
     print("Pinged your deployment. You successfully connected to MongoDB!")
 except Exception as e:
     print(e)
-db = client.my_database
-
-collection = db.my_collection
-document1 = {"name": "홍길동",
-            "bio": "한국인입니다.",
-            "tags": ["#몽고디비", "#파이썬", "#플라스크"],
-            "date": datetime.datetime.utcnow()}
-
-document2 = {"name": "영희",
-             "bio": "한국인입니다.",
-             "tags": ["#MongoDB", "#Python", "#Flask"],
-             "date": datetime.datetime.utcnow()}
-L = [document1, document2]
-collection.insert_many(L)
+db = client.SMU_Capston  # 데이터베이스 이름
+ID_collection = db.users  # ID 컬렉션.
 
 
 app = Flask(__name__)
 ###############
 
-@app.route('/receive_user_info', methods=['POST'])
+@app.route('/receive_user_info', methods=['POST']) #카카오 로그인 API (사용자X mongoDB 사용자 테이블 추가)
 def receive_user_info():
     user_info = request.get_json()
-    # 여기서 받은 사용자 정보를 처리하는 코드 작성
     print('Received user info:', user_info)
-    return jsonify({'message': 'User info received successfully'})
+
+    # MongoDB에 이미 존재하는지 여부 확인
+    existing_user = ID_collection.find_one({'userId': user_info['userId']})
+    if existing_user:
+        return jsonify({'message': 'User already exists in MongoDB'}), 400  # 이미 존재하는 사용자인 경우 클라이언트에게 에러 응답을 전송
+
+    # MongoDB에 사용자 정보 추가
+    user_data = {
+        'userId': user_info['userId'],
+        'nickname': user_info['nickname']
+    }
+    result = ID_collection.insert_one(user_data)
+    print('Inserted user info with ID:', result.inserted_id)
+
+    return jsonify({'message': 'User info received and added to MongoDB successfully'})
 
 @app.route("/hello", methods=['GET'])
 def hello():
