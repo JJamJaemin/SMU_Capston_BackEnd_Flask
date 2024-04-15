@@ -1,11 +1,14 @@
 import os
-
+import torch
 from flask import Flask, request, url_for, session, redirect, jsonify
 from pymongo import collection
 
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import datetime
+
+from emotion_model import prediction
+from kobert import load_and_predict
 
 #MongoDB 연결
 uri = "mongodb+srv://qqqaaaccc:0MgyTiCM067afKHj@jaemin.jyhcm0g.mongodb.net/?retryWrites=true&w=majority&appName=Jaemin"
@@ -25,7 +28,7 @@ ID_collection = db.users  # ID 컬렉션.
 
 app = Flask(__name__)
 ###############
-
+#여기 부터 API
 @app.route('/receive_user_info', methods=['POST']) #카카오 로그인 API (사용자X mongoDB 사용자 테이블 추가)
 def receive_user_info():
     user_info = request.get_json()
@@ -61,6 +64,41 @@ def multiply():
   left = request.form['left']
   rite = request.form['rite']
   return str(int(left) * int(rite))
+
+@app.route('/model', methods=['POST']) #음성 모델 api
+def check():
+    file = request.files['fileTest']
+    if file:
+        # 파일 저장 경로
+        upload_folder = 'uploads'
+        # 없으면 생성
+        os.makedirs(upload_folder, exist_ok=True)
+
+        # 파일 저장
+        file_path = os.path.join(upload_folder, file.filename)
+        file.save(file_path)
+
+        #모델 돌리기
+        predicted_emotion = prediction(file_path)
+
+        if predicted_emotion is not None:
+            return f"감정 상태 : {predicted_emotion}", 200
+        else:
+            return "감정이 없음", 400
+    else:
+        return "파일 없음", 400
+@app.route('/kobert', methods=['POST'])
+def kobert():
+    text = request.form['text']
+
+    if __name__ == '__main__':
+        # 프로세스 부팅 단계 오류 해결
+        torch.multiprocessing.freeze_support()
+
+        # 함수 호출
+        emotion = load_and_predict(text)
+
+    return emotion
 
 # @app.route('/cal', methods=['POST'])
 # def calculate_pitch_analysis(file_path):
@@ -126,4 +164,4 @@ def multiply():
 
 
 if __name__ == '__main__':
-  app.run(host='0.0.0.0', port=5000, debug=True)
+  app.run(host='0.0.0.0', port=5000, debug=True) #모든 ip 에서 접속 가능하도록 0.0.0.0
