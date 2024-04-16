@@ -91,14 +91,11 @@ def check():
 def kobert():
     text = request.form['text']
 
-    if __name__ == '__main__':
-        # 프로세스 부팅 단계 오류 해결
-        torch.multiprocessing.freeze_support()
-
-        # 함수 호출
+    if text:
         emotion = load_and_predict(text)
-
-    return emotion
+        return f'Emotion: {emotion}', 200
+    else:
+        return '입력x', 400
 
 # @app.route('/cal', methods=['POST'])
 # def calculate_pitch_analysis(file_path):
