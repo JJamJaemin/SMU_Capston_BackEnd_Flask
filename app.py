@@ -1,6 +1,7 @@
 import os
 import torch
 from flask import Flask, request, url_for, session, redirect, jsonify
+from flask_restx import Api, Resource,fields, reqparse #swagger 명세서
 from pymongo import collection
 
 from pymongo.mongo_client import MongoClient
@@ -10,6 +11,8 @@ import datetime
 from emotion_model import prediction
 from kobert import load_and_predict
 
+import apikey
+from openai import OpenAI
 #MongoDB 연결
 uri = "mongodb+srv://qqqaaaccc:0MgyTiCM067afKHj@jaemin.jyhcm0g.mongodb.net/?retryWrites=true&w=majority&appName=Jaemin"
 
@@ -27,75 +30,116 @@ ID_collection = db.users  # ID 컬렉션.
 
 
 app = Flask(__name__)
+
+######Swagger######
+#Swagger 명세서 만들기 경로 설정
+api = Api(app, version='1.0', title='API 문서', description='Swagger 문서', doc="/a")
+swagger_api = api.namespace('test', description='조회 API')
+login_api = api.namespace('login', description='카카오 로그인 / 회원가입 API' )
+AI_speech_model_api = api.namespace('AI_speech_model', description='AI 음성 모델 호출')
+AI_text_model_api = api.namespace('AI_text_model', description='AI 텍스트 모델 호출')
+
+#사용자 정보 모델 정의
+user_model = api.model('User', {
+    'userId': fields.String(required=True, description='User ID'),
+    'nickname': fields.String(required=True, description='User Nickname')
+})
 ###############
 #여기 부터 API
-@app.route('/receive_user_info', methods=['POST']) #카카오 로그인 API (사용자X mongoDB 사용자 테이블 추가)
-def receive_user_info():
-    user_info = request.get_json()
-    print('Received user info:', user_info)
+@login_api.route('/receive_user_info', methods=['POST']) #카카오 로그인 API (사용자X mongoDB 사용자 테이블 추가)
+class receive_user_info(Resource):
+    @login_api.expect(user_model, validate=True)
+    @login_api.response(200, 'User added successfully')
+    @login_api.response(400, 'User already exists')
+    def post(self):
+        user_info = request.get_json()
+        print('Received user info:', user_info)
 
-    # MongoDB에 이미 존재하는지 여부 확인
-    existing_user = ID_collection.find_one({'userId': user_info['userId']})
-    if existing_user:
-        return jsonify({'message': 'User already exists in MongoDB'}), 400  # 이미 존재하는 사용자인 경우 클라이언트에게 에러 응답을 전송
+        # MongoDB에 이미 존재하는지 여부 확인
+        existing_user = ID_collection.find_one({'userId': user_info['userId']})
+        if existing_user:
+            return jsonify({'message': 'User already exists in MongoDB'}), 400  # 이미 존재하는 사용자인 경우 클라이언트에게 에러 응답을 전송
+        #유저별 GPT
+        client = OpenAI(
+            api_key=apikey
+        )
 
-    # MongoDB에 사용자 정보 추가
-    user_data = {
-        'userId': user_info['userId'],
-        'nickname': user_info['nickname']
-    }
-    result = ID_collection.insert_one(user_data)
-    print('Inserted user info with ID:', result.inserted_id)
+        my_assistant = client.beta.assistants.create( # GPT 어시스턴트 생성
+            instructions="",
+            name=user_info['nickname'] + "의gpt",
+            # tools,
+            model = "gpt-3.5-turbo",
 
-    return jsonify({'message': 'User info received and added to MongoDB successfully'})
+        )
+        print(my_assistant)
+        # MongoDB에 사용자 정보 추가
+        user_data = {
+            'userId': user_info['userId'],
+            'nickname': user_info['nickname'],
+            'GptID': my_assistant.id
+        }
+        result = ID_collection.insert_one(user_data)
+        print('Inserted user info with ID:', result.inserted_id)
 
-@app.route("/hello", methods=['GET'])
-def hello():
-  return "hello world"
+        return jsonify({'message': 'User info received and added to MongoDB successfully'})
 
-@app.route('/add', methods=['POST'])
-def add():
-  left = request.form['left']
-  rite = request.form['rite']
-  return str(int(left) + int(rite))
+@swagger_api.route('/')
+class Test(Resource):
+    def get(self):
+    	return 'Hello World!'
 
-@app.route('/multiply', methods=['POST'])
-def multiply():
-  left = request.form['left']
-  rite = request.form['rite']
-  return str(int(left) * int(rite))
+@swagger_api.route('/hello')
+class HelloWorld(Resource):
+    def get(self):
+        return "hello world"
 
-@app.route('/model', methods=['POST']) #음성 모델 api
-def check():
-    file = request.files['fileTest']
-    if file:
-        # 파일 저장 경로
-        upload_folder = 'uploads'
-        # 없으면 생성
-        os.makedirs(upload_folder, exist_ok=True)
+# 계산기 API###############################################################
+# @app.route('/add', methods=['POST'])
+# def add():
+#   left = request.form['left']
+#   rite = request.form['rite']
+#   return str(int(left) + int(rite))
+#
+# @app.route('/multiply', methods=['POST'])
+# def multiply():
+#   left = request.form['left']
+#   rite = request.form['rite']
+#   return str(int(left) * int(rite))
+#########################################################################
 
-        # 파일 저장
-        file_path = os.path.join(upload_folder, file.filename)
-        file.save(file_path)
+@AI_speech_model_api.route('/model', methods=['POST']) #음성 모델 api
+class AI_speech_model_api(Resource):
+    def post(self):
+        file = request.files['fileTest']
+        if file:
+            # 파일 저장 경로
+            upload_folder = 'uploads'
+            # 없으면 생성
+            os.makedirs(upload_folder, exist_ok=True)
 
-        #모델 돌리기
-        predicted_emotion = prediction(file_path)
+            # 파일 저장
+            file_path = os.path.join(upload_folder, file.filename)
+            file.save(file_path)
 
-        if predicted_emotion is not None:
-            return f"감정 상태 : {predicted_emotion}", 200
+            #모델 돌리기
+            predicted_emotion = prediction(file_path)
+
+            if predicted_emotion is not None:
+                return f"감정 상태 : {predicted_emotion}", 200
+            else:
+                return "감정이 없음", 400
         else:
-            return "감정이 없음", 400
-    else:
-        return "파일 없음", 400
-@app.route('/kobert', methods=['POST'])
-def kobert():
-    text = request.form['text']
+            return "파일 없음", 400
+@AI_text_model_api.route('/kobert', methods=['POST'])
+class AI_text_model_api(Resource):
+    def post(self):
+        text = request.form['text']
 
-    if text:
-        emotion = load_and_predict(text)
-        return f'Emotion: {emotion}', 200
-    else:
-        return '입력x', 400
+        if text:
+            emotion = load_and_predict(text)
+            return f'Emotion: {emotion}', 200
+        else:
+            return '입력x', 400
 
 # @app.route('/cal', methods=['POST'])
 # def calculate_pitch_analysis(file_path):
