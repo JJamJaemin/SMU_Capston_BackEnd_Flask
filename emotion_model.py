@@ -101,7 +101,7 @@ def extract_features(data, sr=22050, frame_length=2048, hop_length=512):
 def get_predict_feat(path):
     d, s_rate = librosa.load(path, duration=2.5, offset=0.6)
     res = extract_features(d)
-    print(res.shape)
+    #print(res.shape)
 
     if len(res) < 2376:
         res = np.pad(res, (0, 2376 - len(res)), mode='constant')
@@ -118,40 +118,68 @@ def get_predict_feat(path):
     return final_result
 
 #emotions1={0:'angry', 1:'anxious', 2:'embarrassed', 3:'happy', 4:'hurt', 5:'neutral', 6:'sad'}
-def prediction(path1):
+def prediction(path1, content):
     res = get_predict_feat(path1)
     predictions = loaded_model.predict(res)
-    y_pred = encoder2.inverse_transform(predictions)
+    #y_pred = encoder2.inverse_transform(predictions)
+    #print(predictions)
+    #print("######")
+    sorted_indices = np.arange(predictions[0].size)
+    #print(sorted_indices)
 
-    sorted_indices = np.argsort(predictions[0])[::-1]  # 확률이 높은 순서로 인덱스를 정렬
+    #print(encoder2.categories_)
 
     pro_list = [] #감정 순서 neutral happy sad angry
     for idx in sorted_indices:
         label = encoder2.categories_[0][idx]
         probability = predictions[0][idx]
-        pro_list.append(predictions[0][idx])
+        pro_list.append([label, probability])
         #print(pro_list)
-        print(f"{label}: {probability:.3f}")
+        #print(f"{label}: {probability:.3f}")
+
+    #print(pro_list)
 
     positive_words = [
-        "행복", "기쁘다", "웃다", "즐겁다", "흐뭇하다", "만족하다", "설레다", "감사하다", "뿌듯하다",
+        "행복", "기쁘다", "기뻐","웃다", "즐겁다", "흐뭇하다", "만족하다", "설레다", "감사하다", "뿌듯하다",
         "행복감", "미소", "만족", "쾌감", "사랑하다", "행운", "호감", "평화롭다", "안도하다", "신나다",
-        "고맙다", "즐거움", "흥분하다", "감동하다", "행복해하다", "아늑하다", "편안하다", "희열",
-        "더할 나위 없다", "들뜨다", "영광"
+        "고맙다", "즐거움", "흥분하다", "감동하다", "행복해하다", "아늑하다", "편안", "희열",
+        "더할 나위 없다", "들뜨다", "영광", "좋아"
     ]
 
-    test_sentence = "오늘 햄버거를 먹어서 너무 행복했어"
+    test_sentence = content
     words = test_sentence.split()
 
     for i in words:
         if any(positive_word in i for positive_word in positive_words):
-            #print("행복 가중치 +1")
-            pro_list[1] += 0.1
+            # emotion, probability = pro_list[1]
+            # pro_list[1] = [emotion, probability + 0.1]
+            pro_list[1][1] += 0.1
+
+            #print(i)
         else:
             print("기본")
-    return pro_list
+
+    #print(pro_list)
+
+    if abs(pro_list[2][1] > pro_list[0][1] and pro_list[2][1] > pro_list[1][1] and pro_list[3][1] > pro_list[0][1] and pro_list[3][1] > pro_list[1][1]):
+        pro_list[3][1] -= 0.095
+        print("가중치 감소")
+
+    #print(pro_list)
+
+    max_emotion = max(pro_list, key=lambda x: x[1])[0]
+    #print(max_emotion)
+    if max_emotion == "neutral":
+        max_emotion = "슬픔"
+    elif max_emotion == "sad":
+        max_emotion = "중립"
+    elif max_emotion == "angry":
+        max_emotion = "분노"
+    elif max_emotion == "happy":
+        max_emotion = "행복"
+    return max_emotion
 
 
-test = prediction(audio_route)
-
-print(test)
+# test = prediction(audio_route)
+#
+# print(test)

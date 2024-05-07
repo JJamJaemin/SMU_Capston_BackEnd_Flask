@@ -9,7 +9,7 @@ class BERTClassifier(torch.nn.Module):
         super(BERTClassifier, self).__init__()
         self.bert = bert
         self.dropout = torch.nn.Dropout(0.5)
-        self.classifier = torch.nn.Linear(self.bert.config.hidden_size, 7)  # 분류 클래스 수
+        self.classifier = torch.nn.Linear(self.bert.config.hidden_size, 6)  # 분류 클래스 수
 
     def forward(self, input_ids, attention_mask):
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
@@ -43,7 +43,7 @@ class BERTDataset(Dataset):
         return input_ids, attention_mask, label
 
 #따로 분리
-model_path = 'src/quarter_kobert_model4.pth'
+model_path = 'src/mungchi_1.pth'
 device = torch.device("cpu")
 
 tokenizer = KoBERTTokenizer.from_pretrained('skt/kobert-base-v1')
@@ -66,10 +66,36 @@ def load_and_predict(sentence):
             probabilities = torch.softmax(outputs, dim=1) # 확률
             probabilities = probabilities.detach().cpu().numpy()[0] # 확률
             logits = outputs.detach().cpu().numpy()
-            emotions = ["불안", "상처", "분노", "슬픔", "당황", "행복", "중립"]
+            emotions = ["불안", "상처", "분노", "슬픔", "당황", "행복"]
             predicted_class = np.argmax(logits)
-            predicted_emotion = emotions[predicted_class]
+            #print(predicted_class)
+            #print(sentence)
+            #predicted_emotion = emotions[predicted_class]
 
-            probabilities = {emotion: f"{prob:.2f}" for emotion, prob in zip(emotions, probabilities)}#확률
+            probabilities = {emotion: prob for emotion, prob in zip(emotions, probabilities)}#확률
 
-            return predicted_emotion, probabilities
+            # 가장 높은 확률의 감정 초기화
+            max_emotion = '중립'
+            max_probability = 0.0
+
+            #print(probabilities)
+
+            # 가장 높은 확률의 감정 찾기
+            for emotion, probability in probabilities.items():
+                if probability > max_probability:
+                    max_emotion = emotion
+                    max_probability = probability
+
+            # 최대 확률이 0.6보다 높은지 확인하고, 감정 선택
+            if max_probability > 0.6:
+                selected_emotion = max_emotion
+            else:
+                selected_emotion = '중립'
+
+            return selected_emotion
+
+
+# text = ""
+#
+# emotion = load_and_predict(text)
+# print(emotion)
