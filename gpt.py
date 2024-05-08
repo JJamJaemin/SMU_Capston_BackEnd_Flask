@@ -77,25 +77,77 @@ def sendGPT(userid, thread_id, text): #챗봇 대화 함수
         send_message = split_text[0].strip()
         check_end = 1
 
-        return send_message, check_end
+        # 정규표현식을 사용하여 괄호 안의 텍스트 추출
+        extracted_text = re.search(r'\((.*?)\)', send_message).group(1)
+
+        if extracted_text is None:
+            extracted_text = "중립"
+
+            response = {
+                "message": send_message.replace('\n', ''),
+                "emotion": extracted_text,
+                "status": check_end
+            }
+            print(f'감정 없을 때 : {response}')
+
+        else:
+            # 괄호와 함께 텍스트 제거
+            cleaned_message = re.sub(r'\(.*?\)', '', send_message)
+
+            response = {
+                "message": cleaned_message.replace('\n', ''),
+                "emotion": extracted_text,
+                "status": check_end
+            }
+            print(f'감정 있을 때 : {response}')
+
+        return response
     else:
         check_end = 0
         print(gptmessage, check_end)
-        return gptmessage, check_end
+        check_end = 0
 
-def create_diary(thread_id, userid): #일기 만들기 함수
+        # 정규표현식을 사용하여 괄호 안의 텍스트 추출
+        extracted_text = re.search(r'\((.*?)\)', gptmessage).group(1)
+
+        if extracted_text is None:
+            extracted_text = "중립"
+
+            response = {
+                "message": gptmessage.replace('\n', ''),
+                "emotion": extracted_text,
+                "status": check_end
+            }
+            print(f'감정 없을 때 : {response}')
+        else:
+            # 괄호와 함께 텍스트 제거
+            cleaned_message = re.sub(r'\(.*?\)', '', gptmessage)
+
+            response = {
+                "message": cleaned_message.replace('\n', ''),
+                "emotion": extracted_text,
+                "status": check_end
+            }
+            print(f'감정 있을 때 : {response}')
+        return response
+
+def create_diary(thread_id, userid, count): #일기 만들기 함수
     user_info = app.ID_collection.find_one({"userId": userid})
+
+    find_number = int((count-1) * 2)
 
     thread_messages = GPTclient.beta.threads.messages.list(thread_id)
     print(thread_messages.data[0].content[0].text.value)
-    gptmessage = thread_messages.data[0].content[0].text.value
+    gptmessage = thread_messages.data[find_number].content[0].text.value
     if "일기:" in gptmessage:
         split_text = gptmessage.split("일기:")
         send_message = split_text[0].strip()
         check_end = 1
 
         # 일기 내용 추출
-        diary_match = re.search(r'일기:(.+?)\n', gptmessage, re.DOTALL)
+        diary_match = re.search(r'일기: (.+?)\n', gptmessage, re.DOTALL)
+        if diary_match is None:
+            diary_match = re.search(r'일기:(.+?)\n', gptmessage, re.DOTALL)
         if diary_match:
             diary_content = diary_match.group(1).strip()
             print(diary_content)
@@ -117,13 +169,38 @@ def create_diary(thread_id, userid): #일기 만들기 함수
             binary_data = read_image_as_binary(file_path)
             print(binary_data)
 
+            user_messages = []
+            for i, message in enumerate(thread_messages):
+                if i % 2 != 0:
+                    for content in message.content:
+                        formatted_message = content.text.value
+                        user_messages.insert(0, formatted_message)
+
+            print(user_messages)
+            print(len(user_messages))
+
+            # 중립 감정을 저장할 배열들
+            text_emotion = []
+            voice_emotion = []
+
+            # 각 배열마다 중립 감정을 분리하여 저장
+            for message in user_messages:
+                text, voice = message.split('(')[1].split(')')[0].split(',')
+                text_emotion.append(text.strip())
+                voice_emotion.append(voice.strip())
+
+            # 결과 출력
+            print("text_emotion 배열:", text_emotion)
+            print("voice_emotion 배열:", voice_emotion)
+
             diary_data = {
-                'userID': userid,
+                'userId': userid,
                 'Date': str(datetime.now().date()),
                 'image': binary_data,
                 'content': diary_content,
-                'textEmotion': 'textemotion',
-                'speechEmotion': 'speechemotion'
+                'textEmotion': text_emotion,
+                'speechEmotion': voice_emotion,
+                'chatCount': len(user_messages)
             }
             result = Diary_collection.insert_one(diary_data)
             print('일기 저장완료:', result.inserted_id)
@@ -138,8 +215,7 @@ def create_diary(thread_id, userid): #일기 만들기 함수
             if six_w_match:
                 six_w_content = six_w_match.group(1)
 
-                # 백슬래시 및 개행 문자 제거(대충 해봄)
-                # six_w_content = six_w_content.replace('\\', '').replace('\n', '')
+                six_w_content_dict = json.loads(six_w_content)
 
                 print(six_w_content)
 
@@ -156,7 +232,7 @@ def create_diary(thread_id, userid): #일기 만들기 함수
                 json_file_path = os.path.join(json_folder, f'six_w_principles_{current_time}.json')
 
                 with open(json_file_path, 'w') as json_file:
-                    json.dump(six_w_content, json_file, ensure_ascii=False)
+                    json.dump(six_w_content_dict, json_file, ensure_ascii=False)
 
                 # 검색 어시에 파일 업로드 하는 코드(공식 문서 보고 구현)
                 vector_store = GPTclient.beta.vector_stores.create(name="search json")
@@ -185,6 +261,26 @@ def create_diary(thread_id, userid): #일기 만들기 함수
             future_schedule_match = re.search(r'미래일정:\s*({.*?})', gptmessage, re.DOTALL)
             if future_schedule_match:
                 future_schedule = future_schedule_match.group(1)
+
+                # JSON 문자열을 딕셔너리로 변환
+                future_schedule_dict = json.loads(future_schedule)
+
+                print(future_schedule_dict)
+
+                date = future_schedule_dict["날짜"]
+                content = future_schedule_dict["일정"]
+
+                print(f'미래 일정 : {date, content}')
+                #DB 미래 일정 추가
+                future_collection = app.db.future
+                future_data = {
+                    'userId': userid,
+                    'Date' : date,
+                    'Content' : content
+                }
+
+                future_collection.insert_one(future_data)
+
                 print(future_schedule)
             else:
                 print("미래 일정 없음")

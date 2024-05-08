@@ -9,6 +9,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import datetime
 
+import diary
 from emotion_model import prediction
 from kobert import load_and_predict
 
@@ -17,7 +18,7 @@ import apikey
 from openai import OpenAI
 #MongoDB 연결
 uri = "mongodb+srv://qqqaaaccc:0MgyTiCM067afKHj@jaemin.jyhcm0g.mongodb.net/?retryWrites=true&w=majority&appName=Jaemin"
-
+# uri = "mongodb+srv://qqqaaaccc:LTcnsxc5byZUlWvg@japanmongo.wowxzoi.mongodb.net/?retryWrites=true&w=majority&appName=japanmongo"
 # Create a new client and connect to the server #몽고 DB 클라이언트
 client = MongoClient(uri, server_api=ServerApi('1'))
 
@@ -45,6 +46,7 @@ Create_Chatroom_api = api.namespace('Create_Chatroom', description='일기 채�
 Create_Diary_api = api.namespace('Create_Diary_api', description='일기,육하원칙,이미지 생성하기')
 Send_Message_Dairy_api = api.namespace('Send_Message_Dairy', description='Gpt에게 메시지 보내고 받기')
 userinfo_api = api.namespace('userinfo', description='몽고DB에 저장되어 있는 사용자 데이터')
+Search_Diary_api = api.namespace('Search_Diary_api', description='일기 가져오기')
 #사용자 정보 모델 정의
 user_model = api.model('User', {
     'userId': fields.String(required=True, description='User ID'),
@@ -60,7 +62,15 @@ user_info = api.model('UserInfo', {
 })
 diary_info = api.model('DiaryInfo', {
     'threadId': fields.String(required=True, description='threadID'),
-    'userId': fields.String(required=True, description='userID')
+    'userId': fields.String(required=True, description='userID'),
+    'count': fields.Integer(required=True, description='count')
+})
+
+# Diary 모델 정의 (Swagger 문서에 사용됨)
+diary_model = api.model('Diary', {
+    'userid': fields.String(required=True, description='userId'),
+    'date': fields.String(required=False, description='The diary date'),
+    'month': fields.String(required=False, description='The diary month')
 })
 ##gpt 메시지 보내기
 file_upload = api.parser()
@@ -255,16 +265,33 @@ class CreateDiary(Resource):
         data = request.get_json()
         userId = data.get('userId')
         threadId = data.get('threadId')
+        count = data.get('count')
 
         existing_user = ID_collection.find_one({'userId': userId})
 
         if existing_user is not None:
-            gpt.create_diary(threadId, userId)
+            gpt.create_diary(threadId, userId, count)
             response = {'message' : '일기 생성 완료'}
             return response, 200
         else:
             response = {'message' : '일기 생성 실패'}
             return response, 400
+@Search_Diary_api.route('/searchdiary', methods=['POST'])
+class SearchDiary(Resource):
+    @api.expect(diary_model, validate=True)
+    def post(self):
+        data = request.get_json()
+        userid = data.get("userid")
+        date = data.get('date')  # 'date' 쿼리 매개변수, 없을 경우 기본값은 None
+        month = data.get('month')  # 'month' 쿼리 매개변수, 없을 경우 기본값은 None
+        if date == 'string':
+            date = None
+        if month == 'string':
+            month = None
+        print(date,month,userid)
+        month = int(month) if month is not None else None  # 'month'를 int로 변환, None이면 None 유지
+        response = diary.searchDiary(userid, date, month)
+        return response
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0', port=5000, debug=True) #모든 ip 에서 접속 가능하도록 0.0.0.0
