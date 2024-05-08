@@ -37,7 +37,8 @@ GPTclient = OpenAI(
 
 app = Flask(__name__)
 
-######Swagger######
+                                    ######Swagger######
+
 #Swagger 명세서 만들기 경로 설정
 api = Api(app, version='1.0', title='API 문서', description='Swagger 문서', doc="/a")
 swagger_api = api.namespace('test', description='조회 API')
@@ -47,6 +48,7 @@ Create_Diary_api = api.namespace('Create_Diary_api', description='일기,육하�
 Send_Message_Dairy_api = api.namespace('Send_Message_Dairy', description='Gpt에게 메시지 보내고 받기')
 userinfo_api = api.namespace('userinfo', description='몽고DB에 저장되어 있는 사용자 데이터')
 Search_Diary_api = api.namespace('Search_Diary_api', description='일기 가져오기')
+
 #사용자 정보 모델 정의
 user_model = api.model('User', {
     'userId': fields.String(required=True, description='User ID'),
@@ -56,16 +58,35 @@ user_model = api.model('User', {
 chat_thread = api.model('ChatThread', {
     'userId': fields.String(required=True, description='User ID')
 })
+#sendmessage response
+send_message_response = api.model('SendMessageResponse', {
+    "message": fields.String("안녕하세요! 오늘은 어떤 일이 있었나요? ~~~",description='GPT 대답'),
+    'emotion': fields.String("중립", description='GPT 감정 (즉 TTS 감정)'),
+    'status': fields.Integer(0,description='0이면 대화 진행중 1이면 일기 작성 버튼 활성화 요청')
+})
+# 채팅방 생성 응답 모델
+chatroom_response_model = api.model('ChatroomResponse', {
+    'chat_thread': fields.String('thread_h1oNWi9nCUKJWULFGt1oJJYT',description="채팅방의 고유 ID")
+})
+# 사용자 없음 응답 모델
+user_not_found_model = api.model('UserNotFoundResponse', {
+    'message': fields.String('error', description="에러 메시지")
+})
 #유저 정보 모델
 user_info = api.model('UserInfo', {
     'userId': fields.String(required=True, description='User ID')
 })
+#######일기 생성 모델#######
 diary_info = api.model('DiaryInfo', {
     'threadId': fields.String(required=True, description='threadID'),
     'userId': fields.String(required=True, description='userID'),
     'count': fields.Integer(required=True, description='count')
 })
+#
+create_diary_response = api.model('CreateDiaryResponse', {
+    'message': fields.String("일기 생성 완료",description='일기 생성 완료')
 
+})
 # Diary 모델 정의 (Swagger 문서에 사용됨)
 diary_model = api.model('Diary', {
     'userid': fields.String(required=True, description='userId'),
@@ -197,7 +218,7 @@ class test_diary_image(Resource):
 @Send_Message_Dairy_api.route('/model', methods=['POST'])
 class Send_Message_Dairy_api(Resource):
     @api.expect(file_upload)
-    @api.doc(responses={200: 'Success', 400: 'File not provided or no emotion detected'})
+    @api.response(200, '성공',send_message_response)
     def post(self):
         file = request.files['fileTest']
         text = request.form['content']
@@ -240,8 +261,8 @@ class Send_Message_Dairy_api(Resource):
 @Create_Chatroom_api.route('/chatroom', methods=['POST'])
 class CreateChatroom(Resource):
     @Create_Chatroom_api.expect(chat_thread, validate=True)
-    @Create_Chatroom_api.response(200, '채팅방 id 생성')
-    @Create_Chatroom_api.response(400, '해당 유저 없음')
+    @Create_Chatroom_api.response(200, '채팅방 id 생성', chatroom_response_model)
+    @Create_Chatroom_api.response(400, '해당 유저 없음', user_not_found_model)
     def post(self):
         data = request.get_json()  # JSON 데이터 가져오기
         userId = data.get('userId')  # userId 추출
@@ -259,7 +280,7 @@ class CreateChatroom(Resource):
 @Create_Diary_api.route('/diary', methods=['POST'])
 class CreateDiary(Resource):
     @Create_Diary_api.expect(diary_info, validate=True)
-    @Create_Diary_api.response(200, '다이어리 생성')
+    @Create_Diary_api.response(200, '다이어리 생성', create_diary_response)
     @Create_Diary_api.response(400, '다이어리 생성 실패')
     def post(self):
         data = request.get_json()
@@ -279,6 +300,7 @@ class CreateDiary(Resource):
 @Search_Diary_api.route('/searchdiary', methods=['POST'])
 class SearchDiary(Resource):
     @api.expect(diary_model, validate=True)
+    @Search_Diary_api.response(200, '일기들이 불러와 질겁니다 리스트 형식이구요 너무 길어서 못만들어요 직접 넣어주세요')
     def post(self):
         data = request.get_json()
         userid = data.get("userid")
