@@ -1,3 +1,4 @@
+import base64
 from datetime import datetime
 
 import apikey
@@ -109,9 +110,17 @@ def sendGPT(userid, thread_id, text): #챗봇 대화 함수
 
         # 정규표현식을 사용하여 괄호 안의 텍스트 추출
         extracted_text = re.search(r'\((.*?)\)', gptmessage).group(1)
+        if extracted_text == '중립':
+            extracted_text = 0
+        elif extracted_text == '슬픔':
+            extracted_text = 1
+        elif extracted_text == '기쁨':
+            extracted_text = 2
+        elif extracted_text == '분노':
+            extracted_text = 3
 
         if extracted_text is None:
-            extracted_text = "중립"
+            extracted_text = 0 # GPT감정 (중립)
 
             response = {
                 "message": gptmessage.replace('\n', ''),
@@ -167,7 +176,10 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
             file_path = "image/download.png" #todo 나중에 여러사용자가 사용할 경우 충돌 가능성 있음
             download_image(diary_image.data[0].url, file_path)
             binary_data = read_image_as_binary(file_path)
-            print(binary_data)
+            base64_encoded_data = base64.b64encode(binary_data)
+            # base64 데이터를 UTF-8 문자열로 디코딩
+            base64_message = base64_encoded_data.decode('utf-8')
+            print(base64_message)
 
             user_messages = []
             for i, message in enumerate(thread_messages):
@@ -192,11 +204,11 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
             # 결과 출력
             print("text_emotion 배열:", text_emotion)
             print("voice_emotion 배열:", voice_emotion)
-
+            today = datetime.now()
             diary_data = {
                 'userId': userid,
-                'Date': str(datetime.now().date()),
-                'image': binary_data,
+                'date': today,
+                'image': base64_message,
                 'content': diary_content,
                 'textEmotion': text_emotion,
                 'speechEmotion': voice_emotion,
@@ -264,24 +276,27 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
 
                 # JSON 문자열을 딕셔너리로 변환
                 future_schedule_dict = json.loads(future_schedule)
+                if future_schedule_dict.get("날짜") != None and future_schedule_dict.get("일정") != None:
+                    print(future_schedule_dict)
 
-                print(future_schedule_dict)
+                    date = future_schedule_dict["날짜"]
+                    content = future_schedule_dict["일정"]
 
-                date = future_schedule_dict["날짜"]
-                content = future_schedule_dict["일정"]
+                    print(f'미래 일정 : {date, content}')
 
-                print(f'미래 일정 : {date, content}')
-                #DB 미래 일정 추가
-                future_collection = app.db.future
-                future_data = {
-                    'userId': userid,
-                    'Date' : date,
-                    'Content' : content
-                }
+                    #DB 미래 일정 추가
+                    future_collection = app.db.future
+                    future_data = {
+                        'userId': userid,
+                        'Date' : date,
+                        'Content' : content
+                    }
 
-                future_collection.insert_one(future_data)
+                    future_collection.insert_one(future_data)
 
-                print(future_schedule)
+                    print(future_schedule)
+                else:
+                    print("미래일정 형식이 맞지 않음")
             else:
                 print("미래 일정 없음")
         else:
