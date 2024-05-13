@@ -181,6 +181,7 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
             base64_message = base64_encoded_data.decode('utf-8')
             print(base64_message)
 
+
             user_messages = []
             for i, message in enumerate(thread_messages):
                 if i % 2 != 0:
@@ -204,6 +205,59 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
             # 결과 출력
             print("text_emotion 배열:", text_emotion)
             print("voice_emotion 배열:", voice_emotion)
+            ############################################
+            absoluteEM = []
+            abs_abs_count = []
+            count = 0
+            for i in text_emotion:
+                if i == voice_emotion[count]:
+                    absoluteEM.append(i)
+                elif i == '중립' and voice_emotion[count] != '중립':
+                    absoluteEM.append(voice_emotion[count])
+                elif i == '불안':
+                    absoluteEM.append('불안')
+                elif i == '당황':
+                    absoluteEM.append('당황')
+                elif i == '상처':
+                    absoluteEM.append('상처')
+                elif i != '중립' and voice_emotion[count] == '중립':
+                    absoluteEM.append(i)
+                else:
+                    absoluteEM.append('중립')
+                count += 1
+            print("최종감정", absoluteEM)
+
+            # neutral = 0
+            # angry = 0
+            # sad = 0
+            # happy = 0
+            # embrassed = 0
+            # hurt = 0
+            # anxiety = 0
+            # for i in absoluteEM:
+            #     if i == '중립':
+            #         neutral += 1
+            #     elif i == '슬픔':
+            #         sad += 1
+            #     elif i == '분노':
+            #         angry += 1
+            #     elif i == '행복':
+            #         happy += 1
+            #     elif i == '불안':
+            #         anxiety += 1
+            #     elif i == '당황':
+            #         embrassed += 1
+            #     elif i == '상처':
+            #         hurt += 1
+            # abs_abs_count.append(neutral)
+            # abs_abs_count.append(sad)
+            # abs_abs_count.append(angry)
+            # abs_abs_count.append(happy)
+            # abs_abs_count.append(anxiety)
+            # abs_abs_count.append(embrassed)
+            # abs_abs_count.append(hurt)
+
+
             today = datetime.now()
             diary_data = {
                 'userId': userid,
@@ -212,6 +266,7 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                 'content': diary_content,
                 'textEmotion': text_emotion,
                 'speechEmotion': voice_emotion,
+                'absEmotion': absoluteEM,
                 'chatCount': len(user_messages)
             }
             result = Diary_collection.insert_one(diary_data)
@@ -288,8 +343,8 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                     future_collection = app.db.future
                     future_data = {
                         'userId': userid,
-                        'Date' : date,
-                        'Content' : content
+                        'date' : date,
+                        'content' : content
                     }
 
                     future_collection.insert_one(future_data)

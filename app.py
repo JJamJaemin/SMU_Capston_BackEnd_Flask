@@ -51,6 +51,7 @@ Send_Message_Dairy_api = api.namespace('Send_Message_Dairy', description='Gpt에
 userinfo_api = api.namespace('userinfo', description='몽고DB에 저장되어 있는 사용자 데이터')
 Search_Diary_api = api.namespace('Search_Diary_api', description='일기 가져오기')
 Count_Month_Emotion_api = api.namespace('Count_Month_Emotion', description='한달 감정 카운트')
+get_future_api = api.namespace('get_future_api', description='미래 일정 가져오기')
 
 #사용자 정보 모델 정의
 user_model = api.model('User', {
@@ -111,6 +112,19 @@ search_diary_response = api.model('SearchDiaryResponse', {
 month_count_model = api.model('MonthCountModel', {
     'userId': fields.String(required=True, description='userId'),
     'month': fields.String(required=True, description='month')
+})
+#한달 감정 카운트 response
+month_count_response = api.model('MonthCountResponse', {
+    "textCount": fields.String("배열 형식[3,2,1,0,0,0]",description='한달치 텍스트 감정 카운트 배열 neutral sad angry happy anxiety embarrassed hurt'),
+    "speechCount": fields.String("배열 형식[1,2,3,0,0,0]", description='한달치 음성 감정 카운트 배열 neutral sad angry happy anxiety embarrassed hurt'),
+    "absTextCount": fields.String("배열 형식[2,2,2,0,0,0]", description='한달치 최종 감정 카운트 배열 neutral sad angry happy anxiety embarrassed hurt'),
+    "month_max_emotion": fields.String("배열 형식[분노]", description='한달에 나오는 최종 감정')
+})
+
+#future 미래일정 불러오기 response
+get_future_response = api.model('get_future_response', {
+    "content": fields.String("데이터분석 자격증 시험",description='미래 일정 내용'),
+    "date": fields.String("2024-05-12",description='미래 일정 날짜')
 })
 ##gpt 메시지 보내기
 file_upload = api.parser()
@@ -333,7 +347,7 @@ class SearchDiary(Resource):
         if limit == 'None':
             limit = None
         print(date,month,userid,limit)
-        month = int(month) if month is not None else None  # 'month'를 int로 변환, None이면 None 유지
+        #month = int(month) if month is not None else None  # 'month'를 int로 변환, None이면 None 유지
         limit = int(limit) if limit is not None else None
         response = diary.searchDiary(userid, date, month, limit)
         return response
@@ -341,20 +355,37 @@ class SearchDiary(Resource):
 @Count_Month_Emotion_api.route('/countmonthemotion', methods=['POST'])
 class CountMonthemotion(Resource):
     @api.expect(month_count_model, validate=True)
-    @Count_Month_Emotion_api.response(200, "성공")
+    @Count_Month_Emotion_api.response(200, "성공",month_count_response)
     def post(self):
         data = request.get_json()
         userid = data.get("userId")
         month = data.get("month")
         if userid is not None and month is not None:
-            month = int(month) if month is not None else None
+            #month = int(month) if month is not None else None
             response = emotion_count.emotion_count_month(userid, month)
-            print(response)
-            return "good"
+            print("한달 내 (텍스트, 음성, 최종감정) 갯수 ",response)
+            return response
         else:
             response = "인자값 오류"
             return response
+@get_future_api.route('/getfuture/<string:userId>', methods=['GET'])
+class GetFuture(Resource):
+    @api.response(200, '미래 일정 불러오기 완료', get_future_response)
+    def get(self, userId: str):
+        future_collection = db.future
+        # MongoDB에 아이디 여부 확인
+        existing_user = future_collection.find_one({'userId': userId})
 
+        if existing_user is not None:
+            response = {
+                'content' : existing_user['content'],
+                'date' : existing_user['date']
+            }
+
+            return response, 200
+        else:
+            response = {'message': '해당 유저의 미래 일정이 없음'}
+            return response, 400
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0', port=5000, debug=True) #모든 ip 에서 접속 가능하도록 0.0.0.0
