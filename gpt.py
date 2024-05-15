@@ -79,10 +79,10 @@ def sendGPT(userid, thread_id, text): #챗봇 대화 함수
         check_end = 1
 
         # 정규표현식을 사용하여 괄호 안의 텍스트 추출
-        extracted_text = re.search(r'\((.*?)\)', send_message).group(1)
+        extracted_text = re.search(r'\((.*?)\)', send_message)
 
         if extracted_text is None:
-            extracted_text = "중립"
+            extracted_text = 0
 
             response = {
                 "message": send_message.replace('\n', ''),
@@ -92,6 +92,15 @@ def sendGPT(userid, thread_id, text): #챗봇 대화 함수
             print(f'감정 없을 때 : {response}')
 
         else:
+            extracted_text = re.search(r'\((.*?)\)', gptmessage).group(1)
+            if extracted_text == '중립':
+                extracted_text = 0
+            elif extracted_text == '슬픔':
+                extracted_text = 1
+            elif extracted_text == '기쁨':
+                extracted_text = 2
+            elif extracted_text == '분노':
+                extracted_text = 3
             # 괄호와 함께 텍스트 제거
             cleaned_message = re.sub(r'\(.*?\)', '', send_message)
 
@@ -333,8 +342,9 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                 future_schedule_dict = json.loads(future_schedule)
                 if future_schedule_dict.get("날짜") != None and future_schedule_dict.get("일정") != None:
                     print(future_schedule_dict)
-
-                    date = future_schedule_dict["날짜"]
+                    date_str = future_schedule_dict["날짜"]  # 예: "2024-05-10"
+                    date = datetime.strptime(date_str, '%Y-%m-%d')  # 문자열을 datetime 객체로 변환
+                    #date = future_schedule_dict["날짜"]
                     content = future_schedule_dict["일정"]
 
                     print(f'미래 일정 : {date, content}')

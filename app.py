@@ -1,5 +1,7 @@
 import os
 import torch
+from datetime import datetime, timedelta
+import feedback
 from werkzeug.datastructures import FileStorage
 from flask import Flask, request, url_for, session, redirect, jsonify
 from flask_restx import Api, Resource,fields, reqparse #swagger 명세서
@@ -7,23 +9,23 @@ from pymongo import collection
 
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
-import datetime
 
 import diary
 from emotion_model import prediction
 from kobert import load_and_predict
-
+import search
 import gpt
 import apikey
 from openai import OpenAI
+
 
 import emotion_count
 #MongoDB 연결
 uri = "mongodb+srv://qqqaaaccc:0MgyTiCM067afKHj@jaemin.jyhcm0g.mongodb.net/?retryWrites=true&w=majority&appName=Jaemin"
 # uri = "mongodb+srv://qqqaaaccc:LTcnsxc5byZUlWvg@japanmongo.wowxzoi.mongodb.net/?retryWrites=true&w=majority&appName=japanmongo"
 # Create a new client and connect to the server #몽고 DB 클라이언트
-client = MongoClient(uri, server_api=ServerApi('1'))
-
+#client = MongoClient(uri, server_api=ServerApi('1'))
+client = MongoClient('mongodb://jaemin:4869@3.34.199.26', 27017)
 # Send a ping to confirm a successful connection
 try:
     client.admin.command('ping')
@@ -52,7 +54,8 @@ userinfo_api = api.namespace('userinfo', description='몽고DB에 저장되어 �
 Search_Diary_api = api.namespace('Search_Diary_api', description='일기 가져오기')
 Count_Month_Emotion_api = api.namespace('Count_Month_Emotion', description='한달 감정 카운트')
 get_future_api = api.namespace('get_future_api', description='미래 일정 가져오기')
-
+month_feedback_api = api.namespace('month_feedback_api', description='월 피드백 api')
+Search_gpt_api = api.namespace('Search_gpt_api', description='사용자의 경험 검색 api')
 #사용자 정보 모델 정의
 user_model = api.model('User', {
     'userId': fields.String(required=True, description='User ID'),
@@ -106,7 +109,9 @@ search_diary_response = api.model('SearchDiaryResponse', {
     'content': fields.String("일기내용 오늘 무슨일이 있었당", description='일기내용'),
     'textEmotion': fields.String("",description='텍스트 감정 배열 형식'),
     'speechEmotion': fields.String("",description='음성 감정 배열 형식'),
+    'absEmotion': fields.String("",description='최종 감정 배열 형식'),
     'chatCount': fields.Integer(7, description='채팅 갯수')
+
 })
 #한달 감정 카운트
 month_count_model = api.model('MonthCountModel', {
@@ -120,7 +125,14 @@ month_count_response = api.model('MonthCountResponse', {
     "absTextCount": fields.String("배열 형식[2,2,2,0,0,0]", description='한달치 최종 감정 카운트 배열 neutral sad angry happy anxiety embarrassed hurt'),
     "month_max_emotion": fields.String("배열 형식[분노]", description='한달에 나오는 최종 감정')
 })
+month_feedback_model = api.model('month_feedback_model', {
+    'userId': fields.String(required=True, description='userId'),
+    'month_max_emotion': fields.String(required=True, description='month_max_emotion')
+})
 
+month_feedback_response = api.model('month_feedback_response', {
+    'feedback': fields.String("이번달은 화가 많으시군요",description='한달 감정의 피드백')
+})
 #future 미래일정 불러오기 response
 get_future_response = api.model('get_future_response', {
     "content": fields.String("데이터분석 자격증 시험",description='미래 일정 내용'),
@@ -132,8 +144,16 @@ file_upload.add_argument('fileTest', type=FileStorage, location='files', require
 file_upload.add_argument('content', type=str, required=True, location='form', help='메시지 내용')
 file_upload.add_argument('threadid', type=str, required=True, location='form', help='쓰레드 아이디')
 file_upload.add_argument('userid', type=str, required=True, location='form', help='사용자 아이디')
-
-
+#search gpt 모델
+search_message_model = api.model('search_message_model', {
+    "userId": fields.String(required=True, description='userId'),
+    "threadId": fields.String(required=True, description='threadId'),
+    "text": fields.String(required=True, description='text')
+})
+#search gpt response
+search_gpt_response = api.model('search_message_response', {
+    "answer": fields.String('어제 재민이랑 데이터 분석 공부를 했습니다~~~', description='search 어시의 대답')
+})
 # API 리소스
 ###############
 #여기 부터 API
@@ -281,6 +301,27 @@ class Send_Message_Dairy_api(Resource):
                 return "감정이 없음", 400
         else:
             return "파일 없음", 400
+@Search_gpt_api.route('/searchgpt', methods=['POST'])
+class Search_Message_GPT_api(Resource):
+    @api.expect(search_message_model, validate=True)
+    @api.response(200,'성공',search_gpt_response)
+    def post(self):
+        data = request.get_json()
+        userId = data['userId']
+        threadid = data['threadId']
+        text = data['text']
+
+        if userId is not None and threadid is not None and text is not None:
+            response = search.searchGPT(userId, threadid,text)
+            return response, 200
+        else:
+            response = {
+                "message" : "인자값 오류"
+            }
+            return response, 400
+
+
+
 # @AI_text_model_api.route('/kobert', methods=['POST'])
 # class AI_text_model_api(Resource):
 #     def post(self):
@@ -368,24 +409,92 @@ class CountMonthemotion(Resource):
         else:
             response = "인자값 오류"
             return response
-@get_future_api.route('/getfuture/<string:userId>', methods=['GET'])
+@month_feedback_api.route('/monthfeedback', methods=['POST'])
+class MonthFeedbackAPI(Resource):
+    @api.expect(month_feedback_model, validate=True)
+    @month_feedback_api.response(200, "성공", month_feedback_response)
+    def post(self):
+        data = request.get_json()
+        userid = data.get("userId")
+        month_max_emotion = data.get("month_max_emotion")
+        if userid is not None and month_max_emotion is not None:
+            response = feedback.feedbackGPT(userid, month_max_emotion)
+            return response
+        else:
+            response = {
+                "message" : "인자값 오류"
+            }
+            return response
+
+
+@get_future_api.route('/getfuture/<string:userId>/<string:month>', methods=['GET'])
 class GetFuture(Resource):
+    @api.response(200, '미래 일정 불러오기 완료', get_future_response)
+    def get(self, userId: str, month: str):
+        future_collection = db.future
+        existing_user = future_collection.find_one({'userId': userId})
+        if not existing_user:
+            return {'message': '해당 유저가 없음'}, 404
+
+        # 입력받은 year_month를 연도와 월로 분리합니다.
+        year, month = map(int, month.split('-'))
+
+        # 입력된 월의 첫 날과 마지막 날을 계산합니다.
+        start_of_month = datetime(year, month, 1)
+        if month == 12:
+            end_of_month = datetime(year + 1, 1, 1) - timedelta(seconds=1)
+        else:
+            end_of_month = datetime(year, month + 1, 1) - timedelta(seconds=1)
+
+        cursor = future_collection.find({
+            'userId': userId,
+            'date': {'$gte': start_of_month, '$lt': end_of_month}
+        })
+        print("userID date", cursor)
+        results = []
+        for result in cursor:
+            response = {
+                'content': result['content'],
+                # datetime 객체를 "YYYY-MM-DD" 형식의 문자열로 변환
+                'date': result['date'].strftime('%Y-%m-%d')
+            }
+            results.append(response)
+            print("results",results)
+
+        if results:
+            return results, 200
+        else:
+            return {'message': '해당 유저의 미래 일정이 없음'}, 404
+
+@get_future_api.route('/getfuture/<string:userId>', methods=['GET'])
+class GetFutureAll(Resource):
     @api.response(200, '미래 일정 불러오기 완료', get_future_response)
     def get(self, userId: str):
         future_collection = db.future
-        # MongoDB에 아이디 여부 확인
         existing_user = future_collection.find_one({'userId': userId})
+        if not existing_user:
+            return {'message': '해당 유저가 없음'}, 404
 
-        if existing_user is not None:
+        cursor = future_collection.find({
+            'userId': userId,
+        })
+        print("userID date", cursor)
+        results = []
+        for result in cursor:
             response = {
-                'content' : existing_user['content'],
-                'date' : existing_user['date']
+                'content': result['content'],
+                # datetime 객체를 "YYYY-MM-DD" 형식의 문자열로 변환
+                'date': result['date'].strftime('%Y-%m-%d')
             }
+            results.append(response)
+            print("results",results)
 
-            return response, 200
+        if results:
+            return results, 200
         else:
-            response = {'message': '해당 유저의 미래 일정이 없음'}
-            return response, 400
+            return {'message': '해당 유저의 미래 일정이 없음'}, 404
+
+
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0', port=5000, debug=True) #모든 ip 에서 접속 가능하도록 0.0.0.0
