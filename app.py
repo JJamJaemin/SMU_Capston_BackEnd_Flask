@@ -17,6 +17,7 @@ import search
 import gpt
 import apikey
 from openai import OpenAI
+import json
 
 
 import emotion_count
@@ -25,7 +26,7 @@ uri = "mongodb+srv://qqqaaaccc:0MgyTiCM067afKHj@jaemin.jyhcm0g.mongodb.net/?retr
 # uri = "mongodb+srv://qqqaaaccc:LTcnsxc5byZUlWvg@japanmongo.wowxzoi.mongodb.net/?retryWrites=true&w=majority&appName=japanmongo"
 # Create a new client and connect to the server #몽고 DB 클라이언트
 #client = MongoClient(uri, server_api=ServerApi('1'))
-client = MongoClient('mongodb://jaemin:4869@3.34.199.26', 27017)
+client = MongoClient('mongodb://jaemin:4869@13.124.22.141', 27017)
 # Send a ping to confirm a successful connection
 try:
     client.admin.command('ping')
@@ -73,7 +74,9 @@ send_message_response = api.model('SendMessageResponse', {
 })
 # 채팅방 생성 응답 모델
 chatroom_response_model = api.model('ChatroomResponse', {
-    'chat_thread': fields.String('thread_h1oNWi9nCUKJWULFGt1oJJYT',description="채팅방의 고유 ID")
+    'chat_thread': fields.String('thread_h1oNWi9nCUKJWULFGt1oJJYT',description="채팅방의 고유 ID"),
+    'message': fields.String("오늘 하루는 어땟어?",description='챗봇이 처음에 말거는 메시지'),
+    'emotion': fields.Integer(0, description='0이면 중립 1이면 ~~~')
 })
 # 사용자 없음 응답 모델
 user_not_found_model = api.model('UserNotFoundResponse', {
@@ -295,6 +298,7 @@ class Send_Message_Dairy_api(Resource):
             #kobert가 돌아가게
             #여기서 문장(텍스트감정, 음성감정) -> gpt 보내줘야함.
             GPTtoText = text + f"({predicted_text_emotion},{predicted_emotion})"
+            print("텍스트 감정, 음성 감정",predicted_text_emotion, predicted_emotion)
             if predicted_emotion is not None:
                 return gpt.sendGPT(userid,threadid,GPTtoText), 200
             else:
@@ -345,8 +349,19 @@ class CreateChatroom(Resource):
         existing_user = ID_collection.find_one({'userId': userId})
 
         if existing_user is not None:
-            chat_thread = GPTclient.beta.threads.create()  # 채팅방 아이디 생성
-            response = {'chat_thread': chat_thread.id}
+            chat_thread = GPTclient.beta.threads.create().id# 채팅방 아이디 생성
+            chat_thread_tmp = GPTclient.beta.threads.create().id #채팅방 아이디 생성 (임시)
+
+            tmp_response = gpt.sendGPT(userId, chat_thread_tmp,"안녕(중립,중립)")
+            data = tmp_response
+            print("임시 챗봇 스레드: ",chat_thread_tmp)
+            message = data['message']
+            emotion = data['emotion']
+            response = {
+                'chat_thread': chat_thread,
+                'message': message,
+                'emotion': emotion
+            }
             return response, 200
         else:
             response = {'message' : '해당 유저가 없음'}

@@ -176,7 +176,7 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
             # 이미지 만드는거
             diary_image = GPTclient.images.generate(
                 model="dall-e-3",
-                prompt=diary_content,
+                prompt=diary_content + '(카툰 스타일의 일러스트레이션)',
                 n=1,
                 size="1024x1024"
             )
