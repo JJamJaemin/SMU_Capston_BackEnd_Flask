@@ -130,7 +130,8 @@ month_count_response = api.model('MonthCountResponse', {
 })
 month_feedback_model = api.model('month_feedback_model', {
     'userId': fields.String(required=True, description='userId'),
-    'month_max_emotion': fields.String(required=True, description='month_max_emotion')
+    #'month_max_emotion': fields.String(required=True, description='month_max_emotion'),
+    'emotion_list': fields.List(fields.String, required=False, description='Feedback list')
 })
 
 month_feedback_response = api.model('month_feedback_response', {
@@ -431,9 +432,10 @@ class MonthFeedbackAPI(Resource):
     def post(self):
         data = request.get_json()
         userid = data.get("userId")
-        month_max_emotion = data.get("month_max_emotion")
-        if userid is not None and month_max_emotion is not None:
-            response = feedback.feedbackGPT(userid, month_max_emotion)
+        #month_max_emotion = data.get("month_max_emotion")
+        emotion_list = data.get("emotion_list")
+        if userid is not None and emotion_list is not None:
+            response = feedback.feedbackGPT(userid, emotion_list)#month_max_emotion
             return response
         else:
             response = {

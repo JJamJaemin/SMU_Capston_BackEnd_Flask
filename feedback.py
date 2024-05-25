@@ -1,7 +1,7 @@
 import time
 import app
 
-def feedbackGPT(userid, month_max_emotion): #챗봇 대화 함수
+def feedbackGPT(userid, emotion_list): #챗봇 대화 함수
     userid = str(userid)
     # MongoDB에서 사용자의 GPT ID 가져오기
     # 사용자 정보 조회
@@ -9,14 +9,17 @@ def feedbackGPT(userid, month_max_emotion): #챗봇 대화 함수
     user_info = app.ID_collection.find_one({"userId": userid})
 
     if user_info:
-        feedbackGptID = "asst_u4OwoVSVT2sF86jvmZ9qLLYx"  # 사용자의 GPT ID 반환
+        feedbackGptID = "asst_LMlfwboW5ANRJHDD5TLrxsb0"  # 사용자의 GPT ID 반환
         chat_thread = app.GPTclient.beta.threads.create().id
-
+        if emotion_list is not None:
+            feedbackmessage = ""
+            for feedback in emotion_list:
+                feedbackmessage += feedback
         # 메세지 만들기
         thread_message = app.GPTclient.beta.threads.messages.create(
             chat_thread,
             role="user",
-            content= month_max_emotion
+            content= feedbackmessage
         )
         print(thread_message)
         # run id 만들기
