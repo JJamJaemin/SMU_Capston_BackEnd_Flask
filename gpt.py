@@ -266,6 +266,83 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
             # abs_abs_count.append(embrassed)
             # abs_abs_count.append(hurt)
 
+            #피드백 생성
+            thread_messages = GPTclient.beta.threads.messages.list(thread_id, order="asc")
+            thread_messages_size = len(thread_messages.data)
+
+            conversation = [] #대화내용을 저장할 리스트
+
+            # 각 메시지를 출력하는 for문
+            for i in range(thread_messages_size):
+                feedgpt_message = thread_messages.data[i].content[0].text.value
+                if "일기:" in feedgpt_message:
+                    feedgpt_message = feedgpt_message.split("일기:")
+                    feedgpt_message = feedgpt_message[0].strip()
+                role = "user" if i % 2 == 0 else "answer"
+                conversation.append({"role": role, "message": feedgpt_message})
+
+            # JSON으로 변환
+            conversation_json = json.dumps(conversation, ensure_ascii=False, indent=4)
+            print(conversation_json)
+            feedbackjson_folder = 'user_feedback'
+
+            if not os.path.exists(feedbackjson_folder):
+                os.makedirs(feedbackjson_folder)
+
+            with open("user_feedback/feedback.json", "w", encoding="utf-8") as f:
+                f.write(conversation_json)
+
+            # 피드백 어시에 파일 업로드 하는 코드(공식 문서 보고 구현)
+            vector_store = GPTclient.beta.vector_stores.create(name="feedback json")
+            file_paths = glob.glob(os.path.join(feedbackjson_folder, '*'))  # 모든 파일 검색
+            file_streams = [open(path, "rb") for path in file_paths]
+
+            feedback_file_batch = GPTclient.beta.vector_stores.file_batches.upload_and_poll(
+                vector_store_id=vector_store.id, files=file_streams
+            )
+            # 업로드 후 파일 스트림 닫기
+            for file_stream in file_streams:
+                file_stream.close()
+
+            print(feedback_file_batch.status)
+            print(feedback_file_batch.file_counts)
+
+            feedbackassistant = GPTclient.beta.assistants.update(
+                assistant_id= "asst_Dem3ZGnGEXIlP2Bh8qBzf07P",
+                tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
+            )
+            ####
+            feedbackGptID = "asst_Dem3ZGnGEXIlP2Bh8qBzf07P"  # 사용자의 GPT ID 반환
+            chat_thread = app.GPTclient.beta.threads.create().id
+
+            # 메세지 만들기
+            thread_message = app.GPTclient.beta.threads.messages.create(
+                chat_thread,
+                role="user",
+                content= '시작'
+            )
+            print(thread_message)
+            # run id 만들기
+            run = app.GPTclient.beta.threads.runs.create(
+                thread_id=chat_thread,
+                assistant_id=feedbackGptID
+            )
+
+            run_id = run.id
+
+            # run 검색, 응답을 기다림, 만드는게 아니기에 주석 안해도 됨
+            while True:
+                run = app.GPTclient.beta.threads.runs.retrieve(
+                    thread_id=chat_thread,
+                    run_id=run_id
+                )
+                if run.status == "completed":
+                    break
+                else:
+                    time.sleep(2)
+            thread_messages = app.GPTclient.beta.threads.messages.list(chat_thread)
+            feedbackgptmessage = thread_messages.data[0].content[0].text.value
+            clean_feedback = re.sub(r'【.*?】', '', feedbackgptmessage)
 
             today = datetime.now()
             diary_data = {
@@ -276,7 +353,8 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                 'textEmotion': text_emotion,
                 'speechEmotion': voice_emotion,
                 'absEmotion': absoluteEM,
-                'chatCount': len(user_messages)
+                'chatCount': len(user_messages),
+                'feedback': clean_feedback
             }
             result = Diary_collection.insert_one(diary_data)
             print('일기 저장완료:', result.inserted_id)

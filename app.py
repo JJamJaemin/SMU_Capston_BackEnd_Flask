@@ -113,7 +113,8 @@ search_diary_response = api.model('SearchDiaryResponse', {
     'textEmotion': fields.String("",description='텍스트 감정 배열 형식'),
     'speechEmotion': fields.String("",description='음성 감정 배열 형식'),
     'absEmotion': fields.String("",description='최종 감정 배열 형식'),
-    'chatCount': fields.Integer(7, description='채팅 갯수')
+    'chatCount': fields.Integer(7, description='채팅 갯수'),
+    'feedback': fields.String("피드백 내용 ~~", description='피드백 어시AI가 주는 피드백')
 
 })
 #한달 감정 카운트
