@@ -118,7 +118,7 @@ def get_predict_feat(path):
     return final_result
 
 #emotions1={0:'angry', 1:'anxious', 2:'embarrassed', 3:'happy', 4:'hurt', 5:'neutral', 6:'sad'}
-def prediction(path1, content):
+def prediction(path1, content, weight):
     res = get_predict_feat(path1)
     predictions = loaded_model.predict(res)
     #y_pred = encoder2.inverse_transform(predictions)
@@ -153,7 +153,7 @@ def prediction(path1, content):
         if any(positive_word in i for positive_word in positive_words):
             # emotion, probability = pro_list[1]
             # pro_list[1] = [emotion, probability + 0.1]
-            pro_list[1][1] += 0.1
+            pro_list[1][1] += float(weight)
 
             #print(i)
         else:
@@ -179,6 +179,49 @@ def prediction(path1, content):
         max_emotion = "행복"
     return max_emotion
 
+def pre_prediction(path1):
+    res = get_predict_feat(path1)
+    predictions = loaded_model.predict(res)
+    #y_pred = encoder2.inverse_transform(predictions)
+    #print(predictions)
+    #print("######")
+    sorted_indices = np.arange(predictions[0].size)
+    #print(sorted_indices)
+
+    #print(encoder2.categories_)
+
+    pro_list = [] #감정 순서 neutral happy sad angry
+    for idx in sorted_indices:
+        label = encoder2.categories_[0][idx]
+        probability = predictions[0][idx]
+        pro_list.append([label, probability])
+        #print(pro_list)
+        #print(f"{label}: {probability:.3f}")
+
+
+    if abs(pro_list[2][1] > pro_list[0][1] and pro_list[2][1] > pro_list[1][1] and pro_list[3][1] > pro_list[0][1] and pro_list[3][1] > pro_list[1][1]):
+        pro_list[3][1] -= 0.095
+        print("가중치 감소")
+    #angry happy neutral sad
+    if abs(pro_list[1][1] < pro_list[0][1] and pro_list[1][1] > pro_list[2][1] and pro_list[1][1] > pro_list[3][1]):
+        print("angry와 happy가 1,2순위 입니다 가중치 계산 시작")
+        tmp_weight = abs(pro_list[1][1] - pro_list[0][1])
+    else:
+        tmp_weight = 0.0
+    # angry > happy > 모든 감정
+    #print(pro_list)
+
+    max_emotion = max(pro_list, key=lambda x: x[1])[0]
+    #print(max_emotion)
+    if max_emotion == "neutral":
+        max_emotion = "슬픔"
+    elif max_emotion == "sad":
+        max_emotion = "중립"
+    elif max_emotion == "angry":
+        max_emotion = "분노"
+    elif max_emotion == "happy":
+        max_emotion = "행복"
+    return tmp_weight
 
 # test = prediction(audio_route)
 #

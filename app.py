@@ -11,7 +11,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
 import diary
-from emotion_model import prediction
+from emotion_model import prediction,pre_prediction
 from kobert import load_and_predict
 import search
 import gpt
@@ -57,6 +57,7 @@ Count_Month_Emotion_api = api.namespace('Count_Month_Emotion', description='한�
 get_future_api = api.namespace('get_future_api', description='미래 일정 가져오기')
 month_feedback_api = api.namespace('month_feedback_api', description='월 피드백 api')
 Search_gpt_api = api.namespace('Search_gpt_api', description='사용자의 경험 검색 api')
+Set_weight_api = api.namespace('set_weight_api', description='사용자별 가중치 설정 api')
 #사용자 정보 모델 정의
 user_model = api.model('User', {
     'userId': fields.String(required=True, description='User ID'),
@@ -149,6 +150,19 @@ file_upload.add_argument('fileTest', type=FileStorage, location='files', require
 file_upload.add_argument('content', type=str, required=True, location='form', help='메시지 내용')
 file_upload.add_argument('threadid', type=str, required=True, location='form', help='쓰레드 아이디')
 file_upload.add_argument('userid', type=str, required=True, location='form', help='사용자 아이디')
+file_upload.add_argument('weight', type=float, required=True, location='form', help='사용자 가중치')
+#사용자 가중치 조절
+user_weight_file_upload = api.parser()
+user_weight_file_upload.add_argument('userid', type=str, required=True, location='form', help='사용자 아이디')
+user_weight_file_upload.add_argument('file1', type=FileStorage, location='files', required=True, help='음성 파일1')
+user_weight_file_upload.add_argument('file2', type=FileStorage, location='files', required=True, help='음성 파일2')
+user_weight_file_upload.add_argument('file3', type=FileStorage, location='files', required=True, help='음성 파일3')
+user_weight_file_upload.add_argument('file4', type=FileStorage, location='files', required=True, help='음성 파일4')
+user_weight_file_upload.add_argument('file5', type=FileStorage, location='files', required=True, help='음성 파일5')
+#가중치 조절 완료 response
+Set_weight_response = api.model('set_weight_response', {
+    "message": fields.String("가중치 조정이 완료되었습니다!")
+})
 #search gpt 모델
 search_message_model = api.model('search_message_model', {
     "userId": fields.String(required=True, description='userId'),
@@ -199,6 +213,7 @@ class receive_user_info(Resource):
             'profileImage': user_info['profileImage'],
             'GptID': my_assistant.id,
             'SearchGptID': search_assistant.id,
+            'weight': 0
         }
         result = ID_collection.insert_one(user_data)
         print('Inserted user info with ID:', result.inserted_id)
@@ -282,6 +297,7 @@ class Send_Message_Dairy_api(Resource):
         text = request.form['content']
         threadid = request.form['threadid']
         userid = request.form['userid']
+        weight = request.form['weight']
 
         if file:
             # 파일 저장 경로
@@ -294,7 +310,7 @@ class Send_Message_Dairy_api(Resource):
             file.save(file_path)
 
             #모델 돌리기
-            predicted_emotion = prediction(file_path, text)
+            predicted_emotion = prediction(file_path, text, weight)
             predicted_text_emotion = load_and_predict(text)
 
             #kobert가 돌아가게
@@ -512,7 +528,53 @@ class GetFutureAll(Resource):
         else:
             return {'message': '해당 유저의 미래 일정이 없음'}, 404
 
+@Set_weight_api.route('/weight', methods=['POST'])
+class Set_weight_api(Resource):
+    @api.expect(user_weight_file_upload)
+    @api.response(200, '성공',Set_weight_response)
+    def post(self):
+        file1 = request.files['file1']
+        file2 = request.files['file2']
+        file3 = request.files['file3']
+        file4 = request.files['file4']
+        file5 = request.files['file5']
+        userid = request.form['userid']
+        weight = 0
+        cnt = 0
+        for file in [file1, file2, file3, file4, file5]:
+            if file:
+                # 파일 저장 경로
+                upload_folder = 'uploads'
+                # 없으면 생성
+                os.makedirs(upload_folder, exist_ok=True)
 
+                # 파일 저장
+                file_path = os.path.join(upload_folder, file.filename)
+                file.save(file_path)
+
+                #모델 돌리기
+                predicted_emotion = pre_prediction(file_path)
+                if predicted_emotion != 0.0:
+                    cnt += 1
+                    weight = weight + predicted_emotion
+
+            else:
+                return "파일 없음", 400
+        if cnt > 0 :
+            final_weight = weight/cnt
+        else:
+            final_weight = 0
+
+        #mongoDB 업데이트
+        result = ID_collection.update_one(
+            {'userId': userid},
+            {'$set': {'weight': final_weight}}
+        )
+
+        if result.matched_count > 0:
+            return {"message": "사용자 맞춤 가중치 설정 완료"}, 200
+        else:
+            return {"message": "사용자를 찾을 수 없음"}, 404
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0', port=5000, debug=True) #모든 ip 에서 접속 가능하도록 0.0.0.0

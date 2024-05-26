@@ -67,7 +67,8 @@ def diary_date(userId,date):
                 'textEmotion': result['textEmotion'],
                 'speechEmotion': result['speechEmotion'],
                 'absEmotion': result['absEmotion'],
-                'chatCount': result['chatCount']
+                'chatCount': result['chatCount'],
+                'feedback': result['feedback']
             }
             diaries.append(response)
 
@@ -94,7 +95,8 @@ def diary_all(userId):
                 'textEmotion': result['textEmotion'],
                 'speechEmotion': result['speechEmotion'],
                 'absEmotion': result['absEmotion'],
-                'chatCount': result['chatCount']
+                'chatCount': result['chatCount'],
+                'feedback': result['feedback']
             }
             diaries.append(response)
         if diaries:
@@ -138,7 +140,8 @@ def diary_month(userId, month):
                 'textEmotion': result['textEmotion'],
                 'speechEmotion': result['speechEmotion'],
                 'absEmotion': result['absEmotion'],
-                'chatCount': result['chatCount']
+                'chatCount': result['chatCount'],
+                'feedback': result['feedback']
             }
             diaries.append(response)
         if diaries:
@@ -164,7 +167,8 @@ def diary_current(userId,limit):
                 'textEmotion': result['textEmotion'],
                 'speechEmotion': result['speechEmotion'],
                 'absEmotion': result['absEmotion'],
-                'chatCount': result['chatCount']
+                'chatCount': result['chatCount'],
+                'feedback': result['feedback']
             }
             diaries.append(response)
         if diaries:
