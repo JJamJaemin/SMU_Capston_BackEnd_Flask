@@ -234,7 +234,8 @@ class UserInfoAPI(Resource):
                 'nickname': existing_user['nickname'],  # 예시로 'name' 필드를 가져온 것입니다. 실제 필드 이름에 맞게 수정하세요.
                 'profileImage': existing_user['profileImage'],
                 'GPTID': existing_user['GptID'],
-                'searchGptID': existing_user['SearchGptID']
+                'searchGptID': existing_user['SearchGptID'],
+                'weight': existing_user['weight']
                 # 다른 필요한 정보들도 가져오세요
             }
 
