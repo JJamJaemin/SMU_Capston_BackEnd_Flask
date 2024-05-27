@@ -71,7 +71,7 @@ def sendGPT(userid, thread_id, text): #챗봇 대화 함수
         else:
             time.sleep(2)
     thread_messages = GPTclient.beta.threads.messages.list(thread_id)
-    print(thread_messages.data[0].content[0].text.value)
+    print("퐁당의 대화: ", thread_messages.data[0].content[0].text.value)
     gptmessage = thread_messages.data[0].content[0].text.value
     if "일기:" in gptmessage:
         split_text = gptmessage.split("일기:")

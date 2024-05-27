@@ -154,6 +154,7 @@ def prediction(path1, content, weight):
             # emotion, probability = pro_list[1]
             # pro_list[1] = [emotion, probability + 0.1]
             pro_list[1][1] += float(weight)
+            print("사용자화 가중치", float(weight),"이 더해집니다.")
 
             #print(i)
         else:

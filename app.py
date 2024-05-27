@@ -317,7 +317,8 @@ class Send_Message_Dairy_api(Resource):
             #kobert가 돌아가게
             #여기서 문장(텍스트감정, 음성감정) -> gpt 보내줘야함.
             GPTtoText = text + f"({predicted_text_emotion},{predicted_emotion})"
-            print("텍스트 감정, 음성 감정",predicted_text_emotion, predicted_emotion)
+            print("사용자의 대화: ", text)
+            print("텍스트 감정: ",predicted_text_emotion,", 음성 감정: ", predicted_emotion)
             if predicted_emotion is not None:
                 return gpt.sendGPT(userid,threadid,GPTtoText), 200
             else:
