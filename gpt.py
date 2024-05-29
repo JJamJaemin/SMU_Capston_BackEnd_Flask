@@ -459,19 +459,28 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                     break
                 else:
                     time.sleep(2)
-            thread_messages = app.GPTclient.beta.threads.messages.list(chat_thread)
-            Changegptmessage = thread_messages.data[0].content[0].text.value
+            thread_messages2 = app.GPTclient.beta.threads.messages.list(chat_thread)
+            find_thread_message = app.GPTclient.beta.threads.messages.list(thread_id, order="asc")
+            Changegptmessage = thread_messages2.data[0].content[0].text.value
             clean_ChangeEmotion = re.sub(r'【.*?】', '', Changegptmessage)
+            clean_ChangeEmotion = clean_ChangeEmotion.strip('[]').replace(' ','').split(',')
+
             ##########case 구별하기
             negative_emotions = ["불안", "상처", "슬픔", "당황", "분노"]
             positive_emotions = ["행복", "중립"]
+
+            AIChating = []
+            tmpChangeEmotion = []
+
+            # tmpChangeEmotion.append(clean_ChangeEmotion[1:3])
+            # tmpChangeEmotion.append(clean_ChangeEmotion[4:6])
+            print("첫 감정:", clean_ChangeEmotion[0])
+            print("마지막 감정:", clean_ChangeEmotion[1])
 
             if clean_ChangeEmotion[0] in negative_emotions and clean_ChangeEmotion[1] in positive_emotions:
                 print("case1")
                 case = 1
                 ##########챗봇이 대화에서 준 피드백 가져오기
-
-                AIChating = []
 
                 for i in range(len(absoluteEM) - 1):
                     current = absoluteEM[i]
@@ -483,7 +492,7 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                         find_number = int(i * 2) + 1
                         # print(find_number)
 
-                        find_gpt_message = thread_messages.data[find_number].content[0].text.value
+                        find_gpt_message = find_thread_message.data[find_number].content[0].text.value
 
                         extracted_text = re.search(r'\((.*?)\)', find_gpt_message)
                         if extracted_text:
@@ -492,12 +501,11 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
 
                         else:
                             AIChating.append(find_gpt_message)
+                    else:
+                        print("안 돌았을 때 : ",current,next)
             else:
                 print("case2")
                 case = 2
-
-
-
 
             today = datetime.now()
             diary_data = {
@@ -602,4 +610,3 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                 print("미래 일정 없음")
         else:
             print("일기 없음")
-
