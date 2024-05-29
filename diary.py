@@ -68,7 +68,10 @@ def diary_date(userId,date):
                 'speechEmotion': result['speechEmotion'],
                 'absEmotion': result['absEmotion'],
                 'chatCount': result['chatCount'],
-                'feedback': result['feedback']
+                'feedback': result['feedback'],
+                'changeEmotion': result['changeEmotion'],  # [배열형태 감정 2개]
+                'AIChating': result['AIChating'],  # 공감 해준 메시지 찾은것
+                'case': result['case'],  # case1 = 1 case2 = 2
             }
             diaries.append(response)
 
@@ -96,7 +99,10 @@ def diary_all(userId):
                 'speechEmotion': result['speechEmotion'],
                 'absEmotion': result['absEmotion'],
                 'chatCount': result['chatCount'],
-                'feedback': result['feedback']
+                'feedback': result['feedback'],
+                'changeEmotion': result['changeEmotion'],  # [배열형태 감정 2개]
+                'AIChating': result['AIChating'],  # 공감 해준 메시지 찾은것
+                'case': result['case'],  # case1 = 1 case2 = 2
             }
             diaries.append(response)
         if diaries:
@@ -141,7 +147,10 @@ def diary_month(userId, month):
                 'speechEmotion': result['speechEmotion'],
                 'absEmotion': result['absEmotion'],
                 'chatCount': result['chatCount'],
-                'feedback': result['feedback']
+                'feedback': result['feedback'],
+                'changeEmotion': result['changeEmotion'],  # [배열형태 감정 2개]
+                'AIChating': result['AIChating'],  # 공감 해준 메시지 찾은것
+                'case': result['case'],  # case1 = 1 case2 = 2
             }
             diaries.append(response)
         if diaries:
@@ -168,7 +177,10 @@ def diary_current(userId,limit):
                 'speechEmotion': result['speechEmotion'],
                 'absEmotion': result['absEmotion'],
                 'chatCount': result['chatCount'],
-                'feedback': result['feedback']
+                'feedback': result['feedback'],
+                'changeEmotion': result['changeEmotion'],  # [배열형태 감정 2개]
+                'AIChating': result['AIChating'],  # 공감 해준 메시지 찾은것
+                'case': result['case'],  # case1 = 1 case2 = 2
             }
             diaries.append(response)
         if diaries:

@@ -343,6 +343,161 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
             thread_messages = app.GPTclient.beta.threads.messages.list(chat_thread)
             feedbackgptmessage = thread_messages.data[0].content[0].text.value
             clean_feedback = re.sub(r'【.*?】', '', feedbackgptmessage)
+            #########################################################################
+            ####################사용자 감정상태 변환######################################
+            if not os.path.exists(feedbackjson_folder):
+                os.makedirs(feedbackjson_folder)
+
+            with open("user_feedback/feedback.json", "w", encoding="utf-8") as f:
+                f.write(conversation_json)
+
+            # 피드백 어시에 파일 업로드 하는 코드(공식 문서 보고 구현)
+            vector_store = GPTclient.beta.vector_stores.create(name="feedback json")
+            file_paths = glob.glob(os.path.join(feedbackjson_folder, '*'))  # 모든 파일 검색
+            file_streams = [open(path, "rb") for path in file_paths]
+
+            feedback_file_batch = GPTclient.beta.vector_stores.file_batches.upload_and_poll(
+                vector_store_id=vector_store.id, files=file_streams
+            )
+            # 업로드 후 파일 스트림 닫기
+            for file_stream in file_streams:
+                file_stream.close()
+
+            print(feedback_file_batch.status)
+            print(feedback_file_batch.file_counts)
+
+            feedbackassistant = GPTclient.beta.assistants.update(
+                assistant_id= "asst_Dem3ZGnGEXIlP2Bh8qBzf07P",
+                tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
+            )
+            ####
+            feedbackGptID = "asst_Dem3ZGnGEXIlP2Bh8qBzf07P"  # 사용자의 GPT ID 반환
+            chat_thread = app.GPTclient.beta.threads.create().id
+
+            # 메세지 만들기
+            thread_message = app.GPTclient.beta.threads.messages.create(
+                chat_thread,
+                role="user",
+                content= '시작'
+            )
+            print(thread_message)
+            # run id 만들기
+            run = app.GPTclient.beta.threads.runs.create(
+                thread_id=chat_thread,
+                assistant_id=feedbackGptID
+            )
+
+            run_id = run.id
+
+            # run 검색, 응답을 기다림, 만드는게 아니기에 주석 안해도 됨
+            while True:
+                run = app.GPTclient.beta.threads.runs.retrieve(
+                    thread_id=chat_thread,
+                    run_id=run_id
+                )
+                if run.status == "completed":
+                    break
+                else:
+                    time.sleep(2)
+            thread_messages = app.GPTclient.beta.threads.messages.list(chat_thread)
+            feedbackgptmessage = thread_messages.data[0].content[0].text.value
+            clean_feedback = re.sub(r'【.*?】', '', feedbackgptmessage)
+
+            ###############################감정 변화 측정 코드
+
+            if not os.path.exists(feedbackjson_folder):
+                os.makedirs(feedbackjson_folder)
+
+            with open("user_feedback/feedback.json", "w", encoding="utf-8") as f:
+                f.write(conversation_json)
+
+            # 피드백 어시에 파일 업로드 하는 코드(공식 문서 보고 구현)
+            vector_store = GPTclient.beta.vector_stores.create(name="feedback json")
+            file_paths = glob.glob(os.path.join(feedbackjson_folder, '*'))  # 모든 파일 검색
+            file_streams = [open(path, "rb") for path in file_paths]
+
+            feedback_file_batch = GPTclient.beta.vector_stores.file_batches.upload_and_poll(
+                vector_store_id=vector_store.id, files=file_streams
+            )
+            # 업로드 후 파일 스트림 닫기
+            for file_stream in file_streams:
+                file_stream.close()
+
+            print(feedback_file_batch.status)
+            print(feedback_file_batch.file_counts)
+
+            ChangeEmotionassistant = GPTclient.beta.assistants.update(
+                assistant_id= "asst_pvypAltXQ1ma6SGXmuwewllj",
+                tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
+            )
+            ####
+            changeEmotionGptID = "asst_pvypAltXQ1ma6SGXmuwewllj"  # 사용자의 GPT ID 반환
+            chat_thread = app.GPTclient.beta.threads.create().id
+
+            # 메세지 만들기
+            thread_message = app.GPTclient.beta.threads.messages.create(
+                chat_thread,
+                role="user",
+                content= '알려줘'
+            )
+            print(thread_message)
+            # run id 만들기
+            run = app.GPTclient.beta.threads.runs.create(
+                thread_id=chat_thread,
+                assistant_id=changeEmotionGptID
+            )
+
+            run_id = run.id
+
+            # run 검색, 응답을 기다림, 만드는게 아니기에 주석 안해도 됨
+            while True:
+                run = app.GPTclient.beta.threads.runs.retrieve(
+                    thread_id=chat_thread,
+                    run_id=run_id
+                )
+                if run.status == "completed":
+                    break
+                else:
+                    time.sleep(2)
+            thread_messages = app.GPTclient.beta.threads.messages.list(chat_thread)
+            Changegptmessage = thread_messages.data[0].content[0].text.value
+            clean_ChangeEmotion = re.sub(r'【.*?】', '', Changegptmessage)
+            ##########case 구별하기
+            negative_emotions = ["불안", "상처", "슬픔", "당황", "분노"]
+            positive_emotions = ["행복", "중립"]
+
+            if clean_ChangeEmotion[0] in negative_emotions and clean_ChangeEmotion[1] in positive_emotions:
+                print("case1")
+                case = 1
+                ##########챗봇이 대화에서 준 피드백 가져오기
+
+                AIChating = []
+
+                for i in range(len(absoluteEM) - 1):
+                    current = absoluteEM[i]
+                    next = absoluteEM[i + 1]
+                    if current in negative_emotions and next in positive_emotions:
+                        print("피드백 도움이 있음")
+                        print(f"{i}와 {i + 1}을 비교: {current} vs {next}")
+
+                        find_number = int(i * 2) + 1
+                        # print(find_number)
+
+                        find_gpt_message = thread_messages.data[find_number].content[0].text.value
+
+                        extracted_text = re.search(r'\((.*?)\)', find_gpt_message)
+                        if extracted_text:
+                            find_gpt_message = re.sub(r'\(.*?\)', '', find_gpt_message)
+                            AIChating.append(find_gpt_message)
+
+                        else:
+                            AIChating.append(find_gpt_message)
+            else:
+                print("case2")
+                case = 2
+
+
+
 
             today = datetime.now()
             diary_data = {
@@ -354,7 +509,10 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                 'speechEmotion': voice_emotion,
                 'absEmotion': absoluteEM,
                 'chatCount': len(user_messages),
-                'feedback': clean_feedback
+                'feedback': clean_feedback,
+                'changeEmotion': clean_ChangeEmotion, #[배열형태 감정 2개]
+                'AIChating': AIChating, #공감 해준 메시지 찾은것
+                'case': case, #case1 = 1 case2 = 2
             }
             result = Diary_collection.insert_one(diary_data)
             print('일기 저장완료:', result.inserted_id)
