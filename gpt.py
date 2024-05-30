@@ -489,29 +489,29 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                 print("챗봇만 대답:", answer_messages)
                 ##########챗봇이 대화에서 준 피드백 가져오기
 
-                # for i in range(len(absoluteEM) - 1):
-                #     current = absoluteEM[i]
-                #     next = absoluteEM[i + 1]
-                    # if current in negative_emotions and next in positive_emotions:
-                    #     print("피드백 도움이 있음")
-                    #     print(f"{i}와 {i + 1}을 비교: {current} vs {next}")
-                    #
-                    #     find_number = int(i * 2) + 1
-                    #     # print(find_number)
-                    #
-                    #     find_gpt_message = find_thread_message.data[find_number].content[0].text.value
-                    #
-                    #     extracted_text = re.search(r'\((.*?)\)', find_gpt_message)
-                    #     if extracted_text:
-                    #         find_gpt_message = re.sub(r'\(.*?\)', '', find_gpt_message)
-                    #         AIChating.append(find_gpt_message)
-                    #
-                    #     else:
-                    #         AIChating.append(find_gpt_message)
-                    #
-                    #     small_emotions.append([current,next])
-                    # else:
-                    #     print("안 돌았을 때 : ",current,next)
+                for i in range(len(absoluteEM) - 1):
+                    current = absoluteEM[i]
+                    next = absoluteEM[i + 1]
+                    if current in negative_emotions and next in positive_emotions:
+                        print("피드백 도움이 있음")
+                        print(f"{i}와 {i + 1}을 비교: {current} vs {next}")
+
+                        find_number = int(i * 2) + 1
+                        # print(find_number)
+
+                        find_gpt_message = find_thread_message.data[find_number].content[0].text.value
+
+                        extracted_text = re.search(r'\((.*?)\)', find_gpt_message)
+                        if extracted_text:
+                            find_gpt_message = re.sub(r'\(.*?\)', '', find_gpt_message)
+                            AIChating.append(find_gpt_message)
+
+                        else:
+                            AIChating.append(find_gpt_message)
+
+                        small_emotions.append([current,next])
+                    else:
+                        print("안 돌았을 때 : ",current,next)
 
                 if small_emotions:
                     print("피드백 있을 때")
