@@ -151,7 +151,7 @@ def sendGPT(userid, thread_id, text): #챗봇 대화 함수
 
 def create_diary(thread_id, userid, count): #일기 만들기 함수
     user_info = app.ID_collection.find_one({"userId": userid})
-
+    conversation = []  # 대화내용을 저장할 리스트
     find_number = int((count-1) * 2)
 
     thread_messages = GPTclient.beta.threads.messages.list(thread_id)
@@ -270,7 +270,7 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
             thread_messages = GPTclient.beta.threads.messages.list(thread_id, order="asc")
             thread_messages_size = len(thread_messages.data)
 
-            conversation = [] #대화내용을 저장할 리스트
+
 
             # 각 메시지를 출력하는 for문
             for i in range(thread_messages_size):
@@ -469,42 +469,64 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
             negative_emotions = ["불안", "상처", "슬픔", "당황", "분노"]
             positive_emotions = ["행복", "중립"]
 
-            AIChating = []
-            tmpChangeEmotion = []
 
-            # tmpChangeEmotion.append(clean_ChangeEmotion[1:3])
-            # tmpChangeEmotion.append(clean_ChangeEmotion[4:6])
+
+            AIChating = []
+            small_emotions = []
+
             print("첫 감정:", clean_ChangeEmotion[0])
             print("마지막 감정:", clean_ChangeEmotion[1])
 
             if clean_ChangeEmotion[0] in negative_emotions and clean_ChangeEmotion[1] in positive_emotions:
                 print("case1")
                 case = 1
+
+                # 종혜씨 요청
+                print("종혜")
+                print("종혜씨요청:", conversation)
+                answer_messages = [entry['message'].split('(')[0].strip() for entry in conversation if
+                                   entry['role'] == 'answer']
+                print("챗봇만 대답:", answer_messages)
                 ##########챗봇이 대화에서 준 피드백 가져오기
 
-                for i in range(len(absoluteEM) - 1):
-                    current = absoluteEM[i]
-                    next = absoluteEM[i + 1]
-                    if current in negative_emotions and next in positive_emotions:
-                        print("피드백 도움이 있음")
-                        print(f"{i}와 {i + 1}을 비교: {current} vs {next}")
+                # for i in range(len(absoluteEM) - 1):
+                #     current = absoluteEM[i]
+                #     next = absoluteEM[i + 1]
+                    # if current in negative_emotions and next in positive_emotions:
+                    #     print("피드백 도움이 있음")
+                    #     print(f"{i}와 {i + 1}을 비교: {current} vs {next}")
+                    #
+                    #     find_number = int(i * 2) + 1
+                    #     # print(find_number)
+                    #
+                    #     find_gpt_message = find_thread_message.data[find_number].content[0].text.value
+                    #
+                    #     extracted_text = re.search(r'\((.*?)\)', find_gpt_message)
+                    #     if extracted_text:
+                    #         find_gpt_message = re.sub(r'\(.*?\)', '', find_gpt_message)
+                    #         AIChating.append(find_gpt_message)
+                    #
+                    #     else:
+                    #         AIChating.append(find_gpt_message)
+                    #
+                    #     small_emotions.append([current,next])
+                    # else:
+                    #     print("안 돌았을 때 : ",current,next)
 
-                        find_number = int(i * 2) + 1
-                        # print(find_number)
+                if small_emotions:
+                    print("피드백 있을 때")
 
-                        find_gpt_message = find_thread_message.data[find_number].content[0].text.value
+                    small_emotions = list(set(tuple(sublist) for sublist in small_emotions))
+                    small_emotions = [list(item) for item in small_emotions]
 
-                        extracted_text = re.search(r'\((.*?)\)', find_gpt_message)
-                        if extracted_text:
-                            find_gpt_message = re.sub(r'\(.*?\)', '', find_gpt_message)
-                            AIChating.append(find_gpt_message)
-
-                        else:
-                            AIChating.append(find_gpt_message)
-                    else:
-                        print("안 돌았을 때 : ",current,next)
+                    print(small_emotions)
             else:
                 print("case2")
+                # 종혜씨 요청
+                print("종혜")
+                print("종혜씨요청:", conversation)
+                answer_messages = [entry['message'].split('(')[0].strip() for entry in conversation if entry['role'] == 'answer']
+                print("챗봇만 대답:",answer_messages)
                 case = 2
 
             today = datetime.now()
@@ -518,9 +540,11 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                 'absEmotion': absoluteEM,
                 'chatCount': len(user_messages),
                 'feedback': clean_feedback,
-                'changeEmotion': clean_ChangeEmotion, #[배열형태 감정 2개]
-                'AIChating': AIChating, #공감 해준 메시지 찾은것
+                'changeEmotion': clean_ChangeEmotion, #[배열형태 감정 2개] #대 감정
+                'smallEmotion': small_emotions, #대제목 밑에 들어갈 소 감정
+                'AIChating': answer_messages, #공감 해준 메시지 찾은것
                 'case': case, #case1 = 1 case2 = 2
+
             }
             result = Diary_collection.insert_one(diary_data)
             print('일기 저장완료:', result.inserted_id)

@@ -70,6 +70,7 @@ def diary_date(userId,date):
                 'chatCount': result['chatCount'],
                 'feedback': result['feedback'],
                 'changeEmotion': result['changeEmotion'],  # [배열형태 감정 2개]
+                'small_emotion': result['smallEmotion'],  # 소 감정[[]]
                 'AIChating': result['AIChating'],  # 공감 해준 메시지 찾은것
                 'case': result['case'],  # case1 = 1 case2 = 2
             }
@@ -101,6 +102,7 @@ def diary_all(userId):
                 'chatCount': result['chatCount'],
                 'feedback': result['feedback'],
                 'changeEmotion': result['changeEmotion'],  # [배열형태 감정 2개]
+                'small_emotion': result['smallEmotion'],  # 소 감정[[]]
                 'AIChating': result['AIChating'],  # 공감 해준 메시지 찾은것
                 'case': result['case'],  # case1 = 1 case2 = 2
             }
@@ -149,6 +151,7 @@ def diary_month(userId, month):
                 'chatCount': result['chatCount'],
                 'feedback': result['feedback'],
                 'changeEmotion': result['changeEmotion'],  # [배열형태 감정 2개]
+                'small_emotion': result['smallEmotion'], #소 감정[[]]
                 'AIChating': result['AIChating'],  # 공감 해준 메시지 찾은것
                 'case': result['case'],  # case1 = 1 case2 = 2
             }
@@ -179,6 +182,7 @@ def diary_current(userId,limit):
                 'chatCount': result['chatCount'],
                 'feedback': result['feedback'],
                 'changeEmotion': result['changeEmotion'],  # [배열형태 감정 2개]
+                'small_emotion': result['smallEmotion'],  # 소 감정[[]]
                 'AIChating': result['AIChating'],  # 공감 해준 메시지 찾은것
                 'case': result['case'],  # case1 = 1 case2 = 2
             }

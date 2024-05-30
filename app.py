@@ -117,6 +117,7 @@ search_diary_response = api.model('SearchDiaryResponse', {
     'chatCount': fields.Integer(7, description='채팅 갯수'),
     'feedback': fields.String("피드백 내용 ~~", description='피드백 어시AI가 주는 피드백'),
     'changeEmotion': fields.String("[슬픔,행복]",description='사건의 감정과 대화 최종 감정'),
+    'small_emotion': fields.String("[[감정,감정]]", description='대 감정 밑에 들어갈 소 감정'),
     'AIChating': fields.String("['챗봇의 답변이 들어있습니다. 여러개도 있을 수 있음']",description='챗봇의 의미있는 답변'),
     'case': fields.Integer(1, description='1or2 로 1은 case 1,  2는 case2')
 })
