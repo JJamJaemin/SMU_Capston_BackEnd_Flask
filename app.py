@@ -132,7 +132,10 @@ month_count_response = api.model('MonthCountResponse', {
     "textCount": fields.String("배열 형식[3,2,1,0,0,0]",description='한달치 텍스트 감정 카운트 배열 neutral sad angry happy anxiety embarrassed hurt'),
     "speechCount": fields.String("배열 형식[1,2,3,0,0,0]", description='한달치 음성 감정 카운트 배열 neutral sad angry happy anxiety embarrassed hurt'),
     "absTextCount": fields.String("배열 형식[2,2,2,0,0,0]", description='한달치 최종 감정 카운트 배열 neutral sad angry happy anxiety embarrassed hurt'),
-    "month_max_emotion": fields.String("배열 형식[분노]", description='한달에 나오는 최종 감정')
+    "month_max_emotion": fields.String("배열 형식[분노]", description='한달에 나오는 최종 감정'),
+    'case1': fields.Integer(2, description='현재 달의 모든 case1의 갯수'),
+    'case2': fields.Integer(4, description='현재 달의 모든 case2의 갯수'),
+    'sendComment': fields.String("제가 도움이 돼서 정말 좋아요! 의견을 적어주세요~~", description='챗봇 어시에게 보낼 요청사항'),
 })
 month_feedback_model = api.model('month_feedback_model', {
     'userId': fields.String(required=True, description='userId'),

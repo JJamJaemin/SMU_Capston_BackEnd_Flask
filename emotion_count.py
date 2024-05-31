@@ -9,12 +9,29 @@ def emotion_count_month(userid, month):
     text_abs_count = []
     speech_abs_count = []
     abs_abs_count = []
+
+    # case 비율에 따른 멘트
+    over_case = [
+        '제가 많은 도움이 되지 않은 것 같아서 슬퍼요ㅠㅠ\n제가 어떻게 도와드리면 좋을지 말해주세요!!'
+    ]
+
+    under_case = [
+        '저와 이야기를 통해서 기분이 많이 나아지신 것 같아서 너무 행복해요!\n저에게 원하는게 있다면 말해주세요!'
+    ]
+
+    # case에 따른 보내줄 멘트
+    sendComment = ''
+
     print("검색 시작")
     if cursor is not None:
         print("검색 성공")
         TextEM = []
         SpeechEM = []
         absoluteEM = []
+
+        # 일기별 case 카운트 변수
+        case1 = 0
+        case2 = 0
 
         neutral = 0
         angry = 0
@@ -49,6 +66,12 @@ def emotion_count_month(userid, month):
                 TextEM.extend(result['textEmotion'])
                 SpeechEM.extend(result['speechEmotion'])
                 print("감정배열, 음성배열",TextEM, SpeechEM)
+
+                # case에 따라 카운트
+                if result['case'] == 1:
+                    case1 += 1
+                else:
+                    case2 += 1
         # for result in cursor:
         #     print("for문 시작")
         #     diary_date = str(result['date'])
@@ -180,12 +203,23 @@ def emotion_count_month(userid, month):
         if sort_total[i][1] == max:
             month_max_emotion.append(sort_total[i][0])
 
+    #case 비율에 확인, 그에 따른 멘트 보내주기
+    total_case = case1 + case2
+    case_ratio = case2 / total_case
+
+    if case_ratio >= 0.5:
+        sendComment = over_case[0]
+    else:
+        sendComment = under_case[0]
 
     response = {
         "textCount": text_abs_count,
         "speechCount": speech_abs_count,
         "absTextCount": abs_abs_count,
-        "month_max_emotion": month_max_emotion
+        "month_max_emotion": month_max_emotion,
+        "case1": case1,
+        "case2": case2,
+        "sendComment": sendComment,
     }
     return response
 
