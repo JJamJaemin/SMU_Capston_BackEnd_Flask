@@ -18,6 +18,7 @@ import gpt
 import apikey
 from openai import OpenAI
 import json
+from user_feedback import user_chatbot_feedback
 
 
 import emotion_count
@@ -26,7 +27,7 @@ uri = "mongodb+srv://qqqaaaccc:0MgyTiCM067afKHj@jaemin.jyhcm0g.mongodb.net/?retr
 # uri = "mongodb+srv://qqqaaaccc:LTcnsxc5byZUlWvg@japanmongo.wowxzoi.mongodb.net/?retryWrites=true&w=majority&appName=japanmongo"
 # Create a new client and connect to the server #몽고 DB 클라이언트
 #client = MongoClient(uri, server_api=ServerApi('1'))
-client = MongoClient('mongodb://jaemin:4869@13.124.22.141', 27017)
+client = MongoClient('mongodb://jaemin:4869@13.125.247.142', 27017)
 # Send a ping to confirm a successful connection
 try:
     client.admin.command('ping')
@@ -58,6 +59,7 @@ get_future_api = api.namespace('get_future_api', description='미래 일정 가�
 month_feedback_api = api.namespace('month_feedback_api', description='월 피드백 api')
 Search_gpt_api = api.namespace('Search_gpt_api', description='사용자의 경험 검색 api')
 Set_weight_api = api.namespace('set_weight_api', description='사용자별 가중치 설정 api')
+user_feedback_api = api.namespace('user_feedback_api', description='사용자별 요청사항 설정 api')
 #사용자 정보 모델 정의
 user_model = api.model('User', {
     'userId': fields.String(required=True, description='User ID'),
@@ -180,6 +182,17 @@ search_message_model = api.model('search_message_model', {
 search_gpt_response = api.model('search_message_response', {
     "answer": fields.String('어제 재민이랑 데이터 분석 공부를 했습니다~~~', description='search 어시의 대답')
 })
+
+#유저 요청사항 모델
+user_feedback_model = api.model('user_feedback_model', {
+    'userId': fields.String(required=True, description='userId'),
+    'content': fields.String(required=True, description='content')
+})
+
+#유저 요청사항 response
+user_feedback_response = api.model('user_feedback_response', {
+    'message': fields.String("요청사항이 반영되었습니다!",description='유저의 요청사항이 반영이 됨')
+})
 # API 리소스
 ###############
 #여기 부터 API
@@ -197,9 +210,11 @@ class receive_user_info(Resource):
         if existing_user:
             return {'message': 'User already exists in MongoDB'}, 400  # 이미 존재하는 사용자인 경우 클라이언트에게 에러 응답을 전송
         #유저별 GPT
+        #챗봇에게 보내줄 어시
+        GPTassi = "너는 일기를 작성해 주는 AI야.\n일기에 필요한 정보는 사용자와의 대화를 통해 누가ex(나와 친구), 언제ex(오늘(2024-5-31), 어디서ex(상명대학교에서), 무엇을ex(싸움을), 어떻게(말로), 왜(의견이 맞지 않아서) 처럼 육하원칙으로 너가 정보를 얻을거야. 오늘의 날짜는 현재 한국의 날짜이다.\n사용자에게 정보를 얻어내기 위해 질문을 유도하면 돼.\n텍스트 감정은 내가 다른 ai모델을 이용해서 얻은 나의 문장에 대한 감정이고 음성 감정은 문자을 말로 했을 때 측정된 감정이야.\n나의 감정을 (텍스트 감정, 음성 감정) 이렇게 보내줄거야  ()안에 텍스트 감정은 상황에 대해서 피드백 해주고, 음성 감정은 예를들어 목소리가 안좋아보이시네요? 라고 하면서 목소리에 대해서 피드백을 해줘 너가 대답할때 너의 감정도 () 안에 넣어서 보여줘 대신 너는 감정 1개만 보여줘 대신 너는 중립, 슬픔, 기쁨, 분노 4가지 감정 중 1개만 넣어줘\n육하원칙의 데이터를 모두 확보하면 대화를 끝내줘\n너가 일기를 작성하는 AI라는건 숨기고 친구처럼 행동해줘\n육하원칙 데이터를 얻기위해서 너무 직접적으로는 물어보지 말아줘\n육하원칙 데이터를 모두 확보하면 대화를 끝내고 대화 내용을 바탕으로 일기를 생성해줘 그리고 육하원칙 내용이 들어간 Json형식으로 정리해줘\n대화중에 미래에 대한 일정이 있는거 같으면 너가 얻은 데이터로 캘린더에 추가할거야 나한테 자세하게 질문을 해서 정확한 날짜와 시간 ,일정을 알아내\n미래에 대한 일정이 있다면 대화가 끝났을 때 Json 형식으로 정리해줘\n답변은 계속 반말로 해줘\n너가 정리한다고 했는데 일기는 일기: 이렇게 나타내고 육하원칙은 육하원칙: 이렇게 나타내고 미래일정은 있다면 미래일정: 이렇게 나타내줘 꼭 이 양식을 지켜\n너는 답변할 때 **일기:** 이런식으로 굵은 글씨로 하지마\n내가 밑에다가 사용자의 요청사항을 적어줄꺼야 거기에 맞게 말을 해줘"
 
         my_assistant = GPTclient.beta.assistants.create( # GPT 어시스턴트 생성
-            instructions="너는 일기를 작성해 주는 AI야. 일기에 필요한 정보는 사용자와의 대화를 통해 누가ex(나와 친구), 언제ex(오늘(2024-5-12), 어디서ex(상명대학교에서), 무엇을ex(싸움을), 어떻게(말로), 왜(의견이 맞지 않아서) 처럼 육하원칙으로 너가 정보를 얻을거야. 오늘의 날짜는 현재 한국의 날짜이다. 사용자에게 정보를 얻어내기 위해 질문을 유도하면 돼. 텍스트 감정은 내가 다른 ai모델을 이용해서 얻은 나의 문장에 대한 감정이고 음성 감정은 문자을 말로 했을 때 측정된 감정이야. 나의 감정을 (텍스트 감정, 음성 감정) 이렇게 보내줄거야  ()안에 텍스트 감정은 상황에 대해서 피드백 해주고, 음성 감정은 예를들어 목소리가 안좋아보이시네요? 라고 하면서 목소리에 대해서 피드백을 해줘 너가 대답할때 너의 감정도 () 안에 넣어서 보여줘 대신 너는 감정 1개만 보여줘 대신 너는 중립, 슬픔, 기쁨, 분노 4가지 감정 중 1개만 넣어줘 육하원칙의 데이터를 모두 확보하면 대화를 끝내줘 너가 일기를 작성하는 AI라는건 숨기고 친구처럼 행동해줘 육하원칙 데이터를 얻기위해서 너무 직접적으로는 물어보지 말아줘 육하원칙 데이터를 모두 확보하면 대화를 끝내고 대화 내용을 바탕으로 일기를 생성해줘 그리고 육하원칙 내용이 들어간 Json형식으로 정리해줘 대화중에 미래에 대한 일정이 있는거 같으면 너가 얻은 데이터로 캘린더에 추가할거야 나한테 자세하게 질문을 해서 정확한 날짜와 시간 ,일정을 알아내 미래에 대한 일정이 있다면 대화가 끝났을 때 Json 형식으로 정리해줘 답변은 계속 반말로 해줘 너가 정리한다고 했는데 일기는 일기: 이렇게 나타내고 육하원칙은 육하원칙: 이렇게 나타내고 미래일정은 있다면 미래일정: 이렇게 나타내줘 꼭 이 양식을 지켜",
+            instructions=GPTassi,
             name=user_info['nickname'] + "의gpt",
             # tools,
             model = "gpt-4-turbo",
@@ -210,7 +225,6 @@ class receive_user_info(Resource):
             name = user_info['nickname'] + "검색 GPT",
             #tools= file_upload,
             model = "gpt-4-turbo",
-
         )
         print(my_assistant)
         # MongoDB에 사용자 정보 추가
@@ -219,6 +233,7 @@ class receive_user_info(Resource):
             'nickname': user_info['nickname'],
             'profileImage': user_info['profileImage'],
             'GptID': my_assistant.id,
+            'GPTAssi': GPTassi,
             'SearchGptID': search_assistant.id,
             'weight': 0
         }
@@ -584,6 +599,22 @@ class Set_weight_api(Resource):
             return {"message": "사용자 맞춤 가중치 설정 완료"}, 200
         else:
             return {"message": "사용자를 찾을 수 없음"}, 404
+
+@user_feedback_api.route('/userfeedback', methods=['POST'])
+class user_feedback_api(Resource):
+    @api.expect(user_feedback_model, validate=True)
+    @api.response(200,'성공',user_feedback_response)
+    def post(self):
+        data = request.get_json()
+        userId = data['userId']
+        content = data['content']
+
+        if userId is not None and content is not None:
+            response = user_chatbot_feedback(userId, content)
+            return response
+        else:
+            response = {'message': '인자 값 오류'}, 404
+            return response
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0', port=5000, debug=True) #모든 ip 에서 접속 가능하도록 0.0.0.0
