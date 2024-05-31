@@ -10,6 +10,7 @@ import os
 import glob
 import requests
 from openai import OpenAI
+from collections import OrderedDict
 
 def download_image(url, file_path): #이미지 다운로드
     try:
@@ -473,6 +474,21 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
 
             AIChating = []
             small_emotions = []
+            change_comment = [] #db에 넘겨줄 것
+
+            #해당하는 comment들 db에 넘겨주는 것이 아님 -> change_comment에 append할 것
+            case1_comment = [
+                '저와의 이야기를 통해서 감정이 긍정적으로 변화하셔서 다행이에요!\n앞으로도 당신의 이야기를 들려주고 같이 이야기 해요!!',
+            ]
+            case2_comment = [
+                '제가 별로 도움이 되지 못했어요ㅠㅠ\n제가 더 노력을 할테니 같이 이야기를 많이 해보아요!'
+            ]
+            change_happy_comment = [
+                '제가 당신의 감정을 행복으로 이끌었어요!\n저의 피드백을 통해 감정이 행복으로 변화하셔서 너무 기쁩니다!'
+            ]
+            change_neutral_comment = [
+                '제가 당신의 감정을 중립으로 이끌었어요!\n부정적인 감정을 덜어내고 마음의 평온을 찾으셔서 기뻐요!'
+            ]
 
             print("첫 감정:", clean_ChangeEmotion[0])
             print("마지막 감정:", clean_ChangeEmotion[1])
@@ -480,6 +496,8 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
             if clean_ChangeEmotion[0] in negative_emotions and clean_ChangeEmotion[1] in positive_emotions:
                 print("case1")
                 case = 1
+                # 대 감정 변화에 대한 멘트(case가 1일 때)
+                change_comment.append(case1_comment[0])
 
                 # 종혜씨 요청
                 print("종혜")
@@ -516,10 +534,17 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                 if small_emotions:
                     print("피드백 있을 때")
 
-                    small_emotions = list(set(tuple(sublist) for sublist in small_emotions))
+                    #소 감정 순서 고정, 거기에 맞는 comment
+                    small_emotions = list(OrderedDict.fromkeys(tuple(sublist) for sublist in small_emotions))
                     small_emotions = [list(item) for item in small_emotions]
+                    for i in range(len(small_emotions)):
+                        if small_emotions[i][1] == '행복':
+                            change_comment.append(change_happy_comment[0])
+                        else:
+                            change_comment.append(change_neutral_comment[0])
 
-                    print(small_emotions)
+                    print('소 감정 : ',small_emotions)
+                    print('넘겨줄 comment',change_comment)
             else:
                 print("case2")
                 # 종혜씨 요청
@@ -528,6 +553,8 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                 answer_messages = [entry['message'].split('(')[0].strip() for entry in conversation if entry['role'] == 'answer']
                 print("챗봇만 대답:",answer_messages)
                 case = 2
+                # 대 감정 변화에 대한 멘트(case가 2일 때)
+                change_comment.append(case2_comment[0])
 
             today = datetime.now()
             diary_data = {
@@ -544,7 +571,7 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                 'smallEmotion': small_emotions, #대제목 밑에 들어갈 소 감정
                 'AIChating': answer_messages, #공감 해준 메시지 찾은것
                 'case': case, #case1 = 1 case2 = 2
-
+                'changeComment': change_comment,  # 대 감정과 소 감정에 대한 코멘트들 배열형식 []
             }
             result = Diary_collection.insert_one(diary_data)
             print('일기 저장완료:', result.inserted_id)

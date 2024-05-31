@@ -119,7 +119,8 @@ search_diary_response = api.model('SearchDiaryResponse', {
     'changeEmotion': fields.String("[슬픔,행복]",description='사건의 감정과 대화 최종 감정'),
     'small_emotion': fields.String("[[감정,감정]]", description='대 감정 밑에 들어갈 소 감정'),
     'AIChating': fields.String("['챗봇의 답변이 들어있습니다. 여러개도 있을 수 있음']",description='챗봇의 의미있는 답변'),
-    'case': fields.Integer(1, description='1or2 로 1은 case 1,  2는 case2')
+    'case': fields.Integer(1, description='1or2 로 1은 case 1,  2는 case2'),
+    'changeComment': fields.String("['제가 최종적으로 이끌었어요~~', '행복으로 이끌었어요~~']", description='감정 변화에 대한 멘트들'),
 })
 #한달 감정 카운트
 month_count_model = api.model('MonthCountModel', {

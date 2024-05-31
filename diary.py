@@ -73,6 +73,7 @@ def diary_date(userId,date):
                 'small_emotion': result['smallEmotion'],  # 소 감정[[]]
                 'AIChating': result['AIChating'],  # 공감 해준 메시지 찾은것
                 'case': result['case'],  # case1 = 1 case2 = 2
+                'changeComment': result['changeComment'], # 감정 변화에 대한 코멘트들을 준 것
             }
             diaries.append(response)
 
@@ -105,6 +106,7 @@ def diary_all(userId):
                 'small_emotion': result['smallEmotion'],  # 소 감정[[]]
                 'AIChating': result['AIChating'],  # 공감 해준 메시지 찾은것
                 'case': result['case'],  # case1 = 1 case2 = 2
+                'changeComment': result['changeComment'], # 감정 변화에 대한 코멘트들을 준 것
             }
             diaries.append(response)
         if diaries:
@@ -154,6 +156,7 @@ def diary_month(userId, month):
                 'small_emotion': result['smallEmotion'], #소 감정[[]]
                 'AIChating': result['AIChating'],  # 공감 해준 메시지 찾은것
                 'case': result['case'],  # case1 = 1 case2 = 2
+                'changeComment': result['changeComment'],  # 감정 변화에 대한 코멘트들을 준 것
             }
             diaries.append(response)
         if diaries:
@@ -185,6 +188,7 @@ def diary_current(userId,limit):
                 'small_emotion': result['smallEmotion'],  # 소 감정[[]]
                 'AIChating': result['AIChating'],  # 공감 해준 메시지 찾은것
                 'case': result['case'],  # case1 = 1 case2 = 2
+                'changeComment': result['changeComment'],  # 감정 변화에 대한 코멘트들을 준 것
             }
             diaries.append(response)
         if diaries:
