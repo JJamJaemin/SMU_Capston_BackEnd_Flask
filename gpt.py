@@ -469,6 +469,8 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
             ##########case 구별하기
             negative_emotions = ["불안", "상처", "슬픔", "당황", "분노"]
             positive_emotions = ["행복", "중립"]
+            end_happy_emotion = ["행복"]
+            end_neutral_emotion = ["중립"]
 
 
 
@@ -488,6 +490,14 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
             ]
             change_neutral_comment = [
                 '제가 당신의 감정을 중립으로 이끌었어요!\n부정적인 감정을 덜어내고 마음의 평온을 찾으셔서 기뻐요!'
+            ]
+
+            same_happy_commnet = [
+                "행복한 감정을 유지해서 너무 좋아요!\n앞으로도 제가 행복하게 해줄께요!!"
+            ]
+
+            same_neutral_comment = [
+                "마음이 평온해서 다행이에요.\n마음의 평온도 좋지만 제가 행복하게 해드릴께요!!"
             ]
 
             print("첫 감정:", clean_ChangeEmotion[0])
@@ -554,7 +564,12 @@ def create_diary(thread_id, userid, count): #일기 만들기 함수
                 print("챗봇만 대답:",answer_messages)
                 case = 2
                 # 대 감정 변화에 대한 멘트(case가 2일 때)
-                change_comment.append(case2_comment[0])
+                if clean_ChangeEmotion[0] in positive_emotions and clean_ChangeEmotion[1] in end_happy_emotion:
+                    change_comment.append(same_happy_commnet[0])
+                elif clean_ChangeEmotion[0] in positive_emotions and clean_ChangeEmotion[1] in end_neutral_emotion:
+                    change_comment.append(same_neutral_comment[0])
+                else:
+                    change_comment.append(case2_comment[0])
 
             today = datetime.now()
             diary_data = {
