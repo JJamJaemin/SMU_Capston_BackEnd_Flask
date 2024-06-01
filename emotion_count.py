@@ -9,6 +9,7 @@ def emotion_count_month(userid, month):
     text_abs_count = []
     speech_abs_count = []
     abs_abs_count = []
+    event_abs_count = []  # 사건 감정 카운트
 
     # case 비율에 따른 멘트
     over_case = [
@@ -28,6 +29,7 @@ def emotion_count_month(userid, month):
         TextEM = []
         SpeechEM = []
         absoluteEM = []
+        eventEM = []  # 사건 감정 배열
 
         # 일기별 case 카운트 변수
         case1 = 0
@@ -65,7 +67,8 @@ def emotion_count_month(userid, month):
             if diary_month == month:
                 TextEM.extend(result['textEmotion'])
                 SpeechEM.extend(result['speechEmotion'])
-                print("감정배열, 음성배열",TextEM, SpeechEM)
+                eventEM.extend(result['changeEmotion'][0:1])  # 사건 감정 첫 번째만 취합
+                print("감정배열, 음성배열, 사건배열",TextEM, SpeechEM,eventEM)
 
                 # case에 따라 카운트
                 if result['case'] == 1:
@@ -182,9 +185,39 @@ def emotion_count_month(userid, month):
         abs_abs_count.append(embrassed)
         abs_abs_count.append(hurt)
 
+        neutral = 0
+        angry = 0
+        sad = 0
+        happy = 0
+        embrassed = 0
+        hurt = 0
+        anxiety = 0
+        for i in eventEM:
+            if i == '중립':
+                neutral += 1
+            elif i == '슬픔':
+                sad += 1
+            elif i == '분노':
+                angry += 1
+            elif i == '행복':
+                happy += 1
+            elif i == '불안':
+                anxiety += 1
+            elif i == '당황':
+                embrassed += 1
+            elif i == '상처':
+                hurt += 1
+        event_abs_count.append(neutral)
+        event_abs_count.append(sad)
+        event_abs_count.append(angry)
+        event_abs_count.append(happy)
+        event_abs_count.append(anxiety)
+        event_abs_count.append(embrassed)
+        event_abs_count.append(hurt)
+
     else:
         return "유저 정보를 찾을 수 없습니다.", 400
-    print("텍스트 감정 갯수 , 음성 감정 갯수 , 최종감정 감정 갯수",text_abs_count,speech_abs_count,abs_abs_count)
+    print("텍스트 감정 갯수 , 음성 감정 갯수 , 최종감정 감정 갯수, 사건감정 갯수",text_abs_count,speech_abs_count,abs_abs_count,event_abs_count)
     a = 0
     for i in range(0,len(abs_abs_count)):
         if abs_abs_count[i] == 0:
@@ -217,6 +250,7 @@ def emotion_count_month(userid, month):
         "speechCount": speech_abs_count,
         "absTextCount": abs_abs_count,
         "month_max_emotion": month_max_emotion,
+        "eventCount": event_abs_count,
         "case1": case1,
         "case2": case2,
         "sendComment": sendComment,

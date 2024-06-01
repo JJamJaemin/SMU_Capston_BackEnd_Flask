@@ -135,6 +135,7 @@ month_count_response = api.model('MonthCountResponse', {
     "speechCount": fields.String("배열 형식[1,2,3,0,0,0]", description='한달치 음성 감정 카운트 배열 neutral sad angry happy anxiety embarrassed hurt'),
     "absTextCount": fields.String("배열 형식[2,2,2,0,0,0]", description='한달치 최종 감정 카운트 배열 neutral sad angry happy anxiety embarrassed hurt'),
     "month_max_emotion": fields.String("배열 형식[분노]", description='한달에 나오는 최종 감정'),
+    "eventCount": fields.String("배열 형식[2,1,2,0,0,0]", description='한달치 사건 감정 카운트 배열 neutral sad angry happy anxiety embarrassed hurt'),
     'case1': fields.Integer(2, description='현재 달의 모든 case1의 갯수'),
     'case2': fields.Integer(4, description='현재 달의 모든 case2의 갯수'),
     'sendComment': fields.String("제가 도움이 돼서 정말 좋아요! 의견을 적어주세요~~", description='챗봇 어시에게 보낼 요청사항'),
@@ -461,7 +462,7 @@ class CountMonthemotion(Resource):
         if userid is not None and month is not None:
             #month = int(month) if month is not None else None
             response = emotion_count.emotion_count_month(userid, month)
-            print("한달 내 (텍스트, 음성, 최종감정) 갯수 ",response)
+            print("한달 내 (텍스트, 음성, 최종감정, 사건감정) 갯수 ",response)
             return response
         else:
             response = "인자값 오류"
