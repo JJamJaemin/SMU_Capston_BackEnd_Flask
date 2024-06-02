@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 import app
+import feedback
 
 def emotion_count_month(userid, month):
     db = app.client.SMU_Capston  # 데이터베이스 이름
@@ -245,12 +246,30 @@ def emotion_count_month(userid, month):
     else:
         sendComment = under_case[0]
 
+    #월 피드백을 주기 위한 비율화
+    emotion_list = []
+    total = sum(event_abs_count)
+
+    for i in range(len(event_abs_count)):
+        percentage = (event_abs_count[i] / total) * 100
+        emotion_list.append(f'{emotions[i]} {percentage:.1f}%')
+
+    print("이모션 리스트 : ",emotion_list)
+
+    month_feedback = feedback.feedbackGPT(userid, emotion_list)  # month_max_emotion
+    month_feedback_dict = month_feedback[0]
+
+    # 딕셔너리에서 'feedback' 키의 값을 가져오기
+    month_feedback_message = month_feedback_dict['feedback']
+    print("월별 피드백 : ",month_feedback_message)
+
     response = {
         "textCount": text_abs_count,
         "speechCount": speech_abs_count,
         "absTextCount": abs_abs_count,
         "month_max_emotion": month_max_emotion,
         "eventCount": event_abs_count,
+        "month_feedback": month_feedback_message,
         "case1": case1,
         "case2": case2,
         "sendComment": sendComment,

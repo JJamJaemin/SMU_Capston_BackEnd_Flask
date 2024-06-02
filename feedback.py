@@ -42,6 +42,7 @@ def feedbackGPT(userid, emotion_list): #챗봇 대화 함수
                 time.sleep(2)
         thread_messages = app.GPTclient.beta.threads.messages.list(chat_thread)
         gptmessage = thread_messages.data[0].content[0].text.value
+        print("월별 피드백에 들어갈 문장 : ",feedbackmessage)
 
         response = {
             "feedback" : gptmessage
